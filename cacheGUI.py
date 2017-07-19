@@ -79,7 +79,7 @@ class MainWidget(QWidget):
 
 
 
-class ViewWidget(QListWidget):
+class ViewWidget(QTableWidget):
 	def __init__(self, item, parent = None):
 		super(ViewWidget, self).__init__(parent)
 		self.cutItem = item
@@ -87,16 +87,34 @@ class ViewWidget(QListWidget):
 
 	def initUI(self):
 		print self.cutItem
+		header = ['User','Cache Name','ver.','Type','Start','End']
+		self.setColumnCount(len(header))
+		self.setHorizontalHeaderLabels(header)
 		if self.cutItem != None:
-			print self.cutItem.name()
-			for i,j in enumerate(self.cutItem.children()):
-				self.insertItem(i, j.cacheName())
+			self.cutChange(self.cutItem)
+				
 
+	def cutChange(cutItem):
+		self.clear()
+		self.cutItem = cutItem
+		if self.cutItem != None:
+			self.setRowCount(len(self.cutItem.children()))
+			#print self.cutItem.name()
+			for i,j in enumerate(self.cutItem.children()):
+				self.setItem(i, 0, QTableWidgetItem(j.user()))
+				self.setItem(i, 1, QTableWidgetItem(j.cacheName()))
+				cb = QComboBox()
+				for ver in j.children():
+					cb.addItem(ver)
+				self.setCellWidget(i, 2, cb)
+				self.setItem(i, 3, TableWidgetItem(j.fileType()))
+				self.setItem(i, 4, TableWidgetItem(str(j.startFrame())))
+				self.setItem(i, 5, TableWidgetItem(str(j.endFrame())))
 
 if __name__ == '__main__':
-	cacheDrive = 'Q:'
+	cacheDrive = 'C:'
 	app = QApplication(sys.argv)
-	mainWindow = MainWidget()
+	mainWindow = MainWidget(cacheDrive = cacheDrive)
 
 	mainWindow.show()
 
