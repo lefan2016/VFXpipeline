@@ -140,6 +140,7 @@ class Version(object):
 		self.__user = ''
 		self.__startFrame = 0
 		self.__endFrame = 0
+		self.__padding = 0
 		self.__check = True
 		self.findFile()
 
@@ -178,12 +179,39 @@ class Version(object):
 			self.__filename = filename
 			self.__user = self.__filename.split('_')[0]
 
-	def calibrationFrame(self):
-		pass
+			if self.__seq_flag == 1:
+				self.calibrateFrame()
+
+	def calibrateFrame(self):
+		frame_codes = []
+		padding = []
+		if self.check() == True:
+			path = os.path.join(self.parent().path(), self.name())
+			for file in os.listdir(path):
+				if file.split('.')[0] == self.filename() and file.endswith(self.fileType()):
+					code = file.split('.')[1]
+					frame_codes.append(int(code))
+					padding.append(len(code))
+			frame_codes.sort()
+			padding = list(set(padding))
+			padding.sort()
+			min_frame = frame_codes[0]
+			max_frame = frame_codes[-1]
+			if max_frame - min_frame +1 == len(frame_codes):
+				self.__startFrame = min_frame
+				self.__endFrame = max_frame
+				self.__padding = padding[0]
+			else:
+				self.__check = False
+		else:
+			self.__check = False
 
 
 	def filename(self):
 		return self.__filename
+
+	def fileType(self):
+		return self.parent().fileType()
 
 	def user(self):
 		return self.__user
@@ -194,8 +222,30 @@ class Version(object):
 	def endFrame(self):
 		return self.__endFrame
 
+	def padding(self):
+		return self.__padding
+
+	def filenames(self):
+		files = []
+		if self.check() == True:
+			if self.seqFlag() == None:
+				name = self.filename() + '.' + self.fileType()
+				files += [name]
+			if self.seqFlag() == 'SEQ':
+				for i in range(self.startFrame(), self.endFrame()+1):
+					name = '%s.%s.%s' % (self.filename(), str(i).zfill(self.padding()), self.fileType())
+					files += [name]
+		return files
+
+
 	def check(self):
 		return self.__check
+
+	def seqFlag(self):
+		if self.__seq_flag == 1:
+			return 'SEQ'
+		else:
+			return None
 
 	def flag(self):
 		return 'VERSION'
@@ -225,7 +275,10 @@ if __name__ == '__main__':
 
 	col = collect(a, 'VERSION')
 	for c in col:
-		print c.check(), c.name(), c.parent().name()
+		print c.filenames()
+		if c.seqFlag() == 'SEQ':
+			print c.startFrame(),c.endFrame(),c.padding()
+
 
 
 	
