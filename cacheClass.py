@@ -262,7 +262,7 @@ def collect(item, flag):
 			if child.flag() == flag:
 				returnItem.append(child)
 			returnItem += list(set(collect(child, flag)))
-	return returnItem
+	return list(set(returnItem))
 
 
 
