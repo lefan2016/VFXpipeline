@@ -4,13 +4,13 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 
 class MainWidget(QWidget):
-	def __init__(self, cacheDrive = 'Q:', parent = None):
+	def __init__(self, cacheDrive = 'Q:', parent = None, projRegex = '^\d{6}\w+'):
 		super(MainWidget, self).__init__(parent)
 		self.__cacheDrive = cacheDrive
-		self.initUI()
+		self.initUI(projRegex = projRegex)
 
-	def initUI(self):
-		project_regex = re.compile('^\d{6}\w+')
+	def initUI(self, projRegex):
+		project_regex = re.compile(projRegex)
 
 		self.setWindowTitle('VFX Pipeline Tool')
 		self.resize(860,540)

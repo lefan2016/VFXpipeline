@@ -2,9 +2,9 @@ import os
 import re
 
 class ProjectCahce(object):
-	def __init__(self, project, cacheDrive = 'Q:'):
-		self.__cut_regex = re.compile('^\C')
-		project_regex = re.compile('^\d{6}\w+')
+	def __init__(self, project, cacheDrive = 'Q:', projRegex = '^\d{6}\w+', cutRegex = '^\C'):
+		self.__cut_regex = re.compile(cutRegex)
+		project_regex = re.compile(projRegex)
 		self.__cacheDrive = cacheDrive
 		self.__project = ''
 		self.__cuts = []
@@ -95,8 +95,8 @@ class CutCache(object):
 
 
 class Cache(object):
-	def __init__(self, fileType, name, parent, seq_flag):
-		self.__version_regex = re.compile('^\w\d+')
+	def __init__(self, fileType, name, parent, seq_flag, verRegex = '^\w\d+'):
+		self.__version_regex = re.compile(verRegex)
 		self.__parent = parent
 		self.__fileType = fileType
 		self.__name = name
