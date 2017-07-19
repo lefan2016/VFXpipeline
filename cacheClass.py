@@ -107,9 +107,12 @@ class Cache(object):
 		return self.__parent
 
 	def path(self):
-		return os.path.join(self.parent().path(), self.fileType(), self.name())
+		return os.path.join(self.parent().path(), self.name())
 
 	def name(self):
+		return self.__fileType + '\\' + self.__name
+
+	def cacheName(self):
 		return self.__name
 
 	def fileType(self):
@@ -170,7 +173,7 @@ class Version(object):
 
 		for filename in filenames:
 
-			if '_'.join(filename.split('.')[0].split('_')[1:-1]) != self.parent().name():
+			if '_'.join(filename.split('.')[0].split('_')[1:-1]) != self.parent().cacheName():
 				self.__check = False
 
 			if filename.split('.')[0].split('_')[-1] != self.name():
@@ -215,6 +218,9 @@ class Version(object):
 
 	def user(self):
 		return self.__user
+
+	def cacheName(self):
+		return self.parent().cacheName()
 
 	def startFrame(self):
 		return self.__startFrame
@@ -277,6 +283,7 @@ if __name__ == '__main__':
 	for c in col:
 		print c.filenames()
 		if c.seqFlag() == 'SEQ':
+			print c.user(), c.cacheName()
 			print c.startFrame(),c.endFrame(),c.padding()
 
 

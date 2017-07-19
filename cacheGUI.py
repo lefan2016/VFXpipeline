@@ -10,7 +10,7 @@ class MainWidget(QWidget):
 		self.initUI(projRegex = projRegex)
 
 	def initUI(self, projRegex):
-		project_regex = re.compile(projRegex)
+		self.__projRegex = re.compile(projRegex)
 
 		self.setWindowTitle('VFX Pipeline Tool')
 		self.resize(860,540)
@@ -19,15 +19,12 @@ class MainWidget(QWidget):
 		top_hlayout = QHBoxLayout()
 		main_vlayout = QVBoxLayout()
 
-		projects = []
-		path = os.path.join(self.__cacheDrive)
-		for direct in os.listdir(path):
-			if os.path.isdir(os.path.join(path, direct)) and project_regex.match(direct):
-				projects += [direct]
+		
 
 		self.projects_cb = QComboBox()
 		self.cuts_cb = QComboBox()
-		self.projects_cb.addItems(projects)
+
+		self.refresh_projects_cb()
 
 		self.refresh_cuts_cb()
 
@@ -55,6 +52,15 @@ class MainWidget(QWidget):
 		for cut in cc.collect(self.projectItem, 'CUT'):
 			cuts += [cut.name()]
 		self.cuts_cb.addItems(cuts)
+
+	def refresh_projects_cb(self):
+		projects = []
+		path = os.path.join(self.__cacheDrive)
+		for direct in os.listdir(path):
+			if os.path.isdir(os.path.join(path, direct)) and self.__projRegex.match(direct):
+				projects += [direct]
+		self.projects_cb.clear()
+		self.projects_cb.addItems(projects)
 
 
 
