@@ -34,6 +34,7 @@ class ProjectCahce(object):
 		if len(dirs) > 0:
 			for d in dirs:
 				self.__cuts.append(CutCache(cut = d, parent = self))
+		self.__cuts = sorted(self.__cuts, key = lambda x: x.name())
 
 	def name(self):
 		return self.__project
@@ -73,6 +74,7 @@ class CutCache(object):
 						for i,j in enumerate(self.__cacheFilter):
 							if cacheType in self.__cacheFilter[i]:
 								self.__caches.append(Cache(fileType = cacheType, name = name, parent = self, seq_flag = i))
+		self.__caches = sorted(self.__caches, key = lambda x: x.name())
 
 	def name(self):
 		return self.__cut
@@ -131,6 +133,7 @@ class Cache(object):
 		for dirs in os.listdir(self.path()):
 			if os.path.isdir(os.path.join(self.path(), dirs)) and self.__version_regex.match(dirs):
 				self.__versions.append(Version(version = dirs, parent = self, seq_flag = self.__seq_flag))
+		self.__versions = sorted(self.__versions, key = lambda x: x.name())
 
 	def versions(self):
 		return self.__versions

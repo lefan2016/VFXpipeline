@@ -168,6 +168,7 @@ class ViewWidget(QTableWidget):
 				cb = QComboBox()
 				for ver in j.children():
 					cb.addItem(ver.name())
+				cb.setCurrentIndex(cb.count()-1)
 				self.setCellWidget(i, self.header.index("ver."), cb)
 				
 				cb.currentIndexChanged.connect(self.mapper.map)
@@ -175,6 +176,8 @@ class ViewWidget(QTableWidget):
 				
 				version = j.findVersion(cb.currentText())
 				self.setRow(i, version)
+			self.resizeRowsToContents()
+			self.resizeColumnsToContents()
 
 	def verChange(self,row):
 		cb = self.cellWidget(row, self.header.index(self.VERSION_F))
@@ -184,8 +187,12 @@ class ViewWidget(QTableWidget):
 	def setRow(self, row, version):
 		self.setItem(row, self.header.index(self.USER_F), QTableWidgetItem(version.user()))				
 		self.setItem(row, self.header.index(self.TYPE_F), QTableWidgetItem(version.fileType()))
-		self.setItem(row, self.header.index(self.START_F), QTableWidgetItem(str(version.startFrame())))
-		self.setItem(row, self.header.index(self.END_F), QTableWidgetItem(str(version.endFrame())))
+		if version.seqFlag() == 'SEQ':
+			self.setItem(row, self.header.index(self.START_F), QTableWidgetItem(str(version.startFrame())))
+			self.setItem(row, self.header.index(self.END_F), QTableWidgetItem(str(version.endFrame())))
+		else:
+			self.setItem(row, self.header.index(self.START_F), QTableWidgetItem('X'))
+			self.setItem(row, self.header.index(self.END_F), QTableWidgetItem('X'))
 
 if __name__ == '__main__':
 	cacheDrive = 'Q:'
