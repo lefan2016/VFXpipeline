@@ -83,36 +83,59 @@ class ViewWidget(QTableWidget):
 	def __init__(self, item, parent = None):
 		super(ViewWidget, self).__init__(parent)
 		self.cutItem = item
+		self.header = ['User','Cache Name','ver.','Type','Start','End']
+		self.cacheItems = []
 		self.initUI()
 
-	def initUI(self):
-		print self.cutItem
-		header = ['User','Cache Name','ver.','Type','Start','End']
-		self.setColumnCount(len(header))
-		self.setHorizontalHeaderLabels(header)
+	def initUI(self):		
+		self.setColumnCount(len(self.header))
+		self.setHorizontalHeaderLabels(self.header)
+		self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+		self.setSelectionBehavior(QAbstractItemView.SelectRows)
+		self.mapper = QSignalMapper(self)
+		self.mapper.mapped[int].connect(self.verChange)
 		if self.cutItem != None:
 			self.cutChange(self.cutItem)
 				
 
-	def cutChange(cutItem):
+	def cutChange(self, cutItem):
 		self.clear()
+		self.cacheItems = []
+		self.setColumnCount(len(self.header))
+		self.setHorizontalHeaderLabels(self.header)
 		self.cutItem = cutItem
 		if self.cutItem != None:
 			self.setRowCount(len(self.cutItem.children()))
 			#print self.cutItem.name()
+			self.ver_cb = []
 			for i,j in enumerate(self.cutItem.children()):
-				self.setItem(i, 0, QTableWidgetItem(j.user()))
+				self.cacheItems.append(j)
+
 				self.setItem(i, 1, QTableWidgetItem(j.cacheName()))
 				cb = QComboBox()
 				for ver in j.children():
-					cb.addItem(ver)
+					cb.addItem(ver.name())
 				self.setCellWidget(i, 2, cb)
-				self.setItem(i, 3, TableWidgetItem(j.fileType()))
-				self.setItem(i, 4, TableWidgetItem(str(j.startFrame())))
-				self.setItem(i, 5, TableWidgetItem(str(j.endFrame())))
+				
+				cb.currentIndexChanged.connect(self.mapper.map)
+				self.mapper.setMapping(cb, i)
+				
+				version = j.findVersion(cb.currentText())
+				self.setItem(i, 0, QTableWidgetItem(version.user()))				
+				self.setItem(i, 3, QTableWidgetItem(version.fileType()))
+				self.setItem(i, 4, QTableWidgetItem(str(version.startFrame())))
+				self.setItem(i, 5, QTableWidgetItem(str(version.endFrame())))
+
+	def verChange(self,row):
+		cb = self.cellWidget(row, 2)
+		version = self.cacheItems[row].findVersion(cb.currentText())
+		self.setItem(row, 0, QTableWidgetItem(version.user()))				
+		self.setItem(row, 3, QTableWidgetItem(version.fileType()))
+		self.setItem(row, 4, QTableWidgetItem(str(version.startFrame())))
+		self.setItem(row, 5, QTableWidgetItem(str(version.endFrame())))
 
 if __name__ == '__main__':
-	cacheDrive = 'C:'
+	cacheDrive = 'Q:'
 	app = QApplication(sys.argv)
 	mainWindow = MainWidget(cacheDrive = cacheDrive)
 

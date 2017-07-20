@@ -133,6 +133,9 @@ class Cache(object):
 	def flag(self):
 		return 'CACHE'
 
+	def findVersion(self, ver):
+		return [x for x in self.children() if x.name() == ver][0]
+
 
 class Version(object):
 	def __init__(self, version, parent, seq_flag):
