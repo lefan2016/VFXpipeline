@@ -1,6 +1,6 @@
 import os
 import re
-import threading
+import threading, Queue
 import json
 
 class ProjectCahce(object):
@@ -25,15 +25,22 @@ class ProjectCahce(object):
 			return False
 
 	def read(self):
-		dirs = []
 		self.__cuts = []
 		path = os.path.join(self.__cacheDrive, self.__project)
+		ths = []
+		que = Queue.Queue()
 		for ele in os.listdir(path):
 			if self.__cut_regex.match(ele):
-				dirs.extend([ele])
-		if len(dirs) > 0:
-			for d in dirs:
-				self.__cuts.append(CutCache(cut = d, parent = self))
+				th = threading.Thread(target = CutCache, kwargs = {'cut' : ele, 'parent' : self, 'que' : que})
+				#self.__cuts.append(CutCache(cut = ele, parent = self))
+				th.start()
+				ths.append(th)
+		
+		for th in ths:
+			th.join()
+		while not que.empty():
+			self.__cuts.append(que.get())
+		
 		self.__cuts = sorted(self.__cuts, key = lambda x: x.name())
 
 	def name(self):
@@ -59,21 +66,32 @@ class ProjectCahce(object):
 
 
 class CutCache(object):
-	def __init__(self, cut, parent):
+	def __init__(self, cut, parent, que):
 		self.__cacheFilter = [['abc', 'obj'],['vdb','prt']]
 		self.__parent = parent
 		self.__cut = cut
 		self.read()
+		que.put(self)
 
 	def read(self):
 		self.__caches = []
+		que = Queue.Queue()
+		ths = []
 		for cacheType in os.listdir(self.path()):
 			if os.path.isdir(os.path.join(self.path(), cacheType)) and (cacheType in self.__cacheFilter[0] or cacheType in self.__cacheFilter[1]):
 				for name in os.listdir(self.path() + '\\' + cacheType):
 					if os.path.isdir(os.path.join(self.path(), cacheType, name)):
 						for i,j in enumerate(self.__cacheFilter):
 							if cacheType in self.__cacheFilter[i]:
-								self.__caches.append(Cache(fileType = cacheType, name = name, parent = self, seq_flag = i))
+								#self.__caches.append(Cache(fileType = cacheType, name = name, parent = self, seq_flag = i))
+								th = threading.Thread(target = Cache, kwargs = {'fileType' : cacheType, 'name' : name, 'parent' : self, 'seq_flag' : i, 'que' : que})
+								th.start()
+								ths.append(th)
+		for th in ths:
+			th.join()
+		while not que.empty():
+			self.__caches.append(que.get())
+
 		self.__caches = sorted(self.__caches, key = lambda x: x.name())
 
 	def name(self):
@@ -105,13 +123,14 @@ class CutCache(object):
 
 
 class Cache(object):
-	def __init__(self, fileType, name, parent, seq_flag, verRegex = '^\w\d+'):
+	def __init__(self, fileType, name, parent, seq_flag, que, verRegex = '^\w\d+'):
 		self.__version_regex = re.compile(verRegex)
 		self.__parent = parent
 		self.__fileType = fileType
 		self.__name = name
 		self.__seq_flag = seq_flag
 		self.read()
+		que.put(self)
 
 	def parent(self):
 		return self.__parent
@@ -130,9 +149,20 @@ class Cache(object):
 
 	def read(self):
 		self.__versions = []
+		que = Queue.Queue()
+		ths = []
 		for dirs in os.listdir(self.path()):
 			if os.path.isdir(os.path.join(self.path(), dirs)) and self.__version_regex.match(dirs):
-				self.__versions.append(Version(version = dirs, parent = self, seq_flag = self.__seq_flag))
+				#self.__versions.append(Version(version = dirs, parent = self, seq_flag = self.__seq_flag))
+				th = threading.Thread(target = Version, kwargs = {'version' : dirs, 'parent' : self, 'seq_flag' : self.__seq_flag, 'que' : que})
+				th.start()
+				ths.append(th)
+
+		for th in ths:
+			th.join()
+		while not que.empty():
+			self.__versions.append(que.get())
+
 		self.__versions = sorted(self.__versions, key = lambda x: x.name())
 
 	def versions(self):
@@ -149,7 +179,7 @@ class Cache(object):
 
 
 class Version(object):
-	def __init__(self, version, parent, seq_flag):
+	def __init__(self, version, parent, seq_flag, que):
 		self.__parent = parent
 		self.__version = version
 		self.__seq_flag = seq_flag
@@ -160,6 +190,7 @@ class Version(object):
 		self.__padding = 0
 		self.__check = True
 		self.findFile()
+		que.put(self)
 
 	def name(self):
 		return self.__version
@@ -292,13 +323,19 @@ if __name__ == '__main__':
 	print a.exists()
 	print a.name()
 	print a.cuts()[0].path()
+	print a.cuts()[0].children()[0].path()
+
+	print len(a.children()[1].children())
 
 	col = collect(a, 'VERSION')
+	print '==='
 	for c in col:
 		print c.filenames()
+		'''
 		if c.seqFlag() == 'SEQ':
 			print c.user(), c.cacheName()
 			print c.startFrame(),c.endFrame(),c.padding()
+		'''
 
 
 
