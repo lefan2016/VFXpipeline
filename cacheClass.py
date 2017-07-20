@@ -1,5 +1,7 @@
 import os
 import re
+import threading
+import json
 
 class ProjectCahce(object):
 	def __init__(self, project, cacheDrive = 'Q:', projRegex = '^\d{6}\w+', cutRegex = '^\C'):
@@ -48,6 +50,9 @@ class ProjectCahce(object):
 	def path(self):
 		return os.path.join(self.__cacheDrive , '\\', self.__project)
 
+	def findCut(self, cut):
+		return [x for x in self.children() if x.name() == cut][0]
+
 	def flag(self):
 		return 'PROJECT'
 
@@ -62,7 +67,7 @@ class CutCache(object):
 	def read(self):
 		self.__caches = []
 		for cacheType in os.listdir(self.path()):
-			if os.path.isdir(os.path.join(self.path(), cacheType)):
+			if os.path.isdir(os.path.join(self.path(), cacheType)) and (cacheType in self.__cacheFilter[0] or cacheType in self.__cacheFilter[1]):
 				for name in os.listdir(self.path() + '\\' + cacheType):
 					if os.path.isdir(os.path.join(self.path(), cacheType, name)):
 						for i,j in enumerate(self.__cacheFilter):
@@ -89,6 +94,9 @@ class CutCache(object):
 
 	def path(self):
 		return os.path.join(self.parent().path(), self.name())
+
+	def findCache(self, fileType, cacheName):
+		return [x for x in self.children() if x.cacheName() == cacheName and x.fileType() == fileType][0]
 
 	def flag(self):
 		return 'CUT'
