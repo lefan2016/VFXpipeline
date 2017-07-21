@@ -67,7 +67,6 @@ class MainWidget(QWidget):
 			cuts += [cut.name()]
 		self.cuts_cb.addItems(cuts)
 
-
 		self.pick_cut()
 
 		self.splitter = QSplitter()
@@ -83,16 +82,11 @@ class MainWidget(QWidget):
 		top_hlayout.addWidget(self.cuts_cb)
 		main_vlayout.addLayout(top_hlayout)
 
-
-		
-
 		self.splitter.addWidget(self.view_widget)
 		self.splitter.addWidget(cache_comment_widget)
 		self.splitter.addWidget(ver_comment_widget)
 
 		main_vlayout.addWidget(self.splitter)
-
-
 
 		self.setLayout(main_vlayout)
 
@@ -185,7 +179,8 @@ class ViewWidget(QTableWidget):
 		self.setRow(row, version)
 
 	def setRow(self, row, version):
-		self.setItem(row, self.header.index(self.USER_F), QTableWidgetItem(version.user()))				
+		self.setItem(row, self.header.index(self.USER_F), QTableWidgetItem(version.user()))
+		default_background = self.item(row, self.header.index(self.USER_F)).background()				
 		self.setItem(row, self.header.index(self.TYPE_F), QTableWidgetItem(version.fileType()))
 		if version.seqFlag() == 'SEQ':
 			self.setItem(row, self.header.index(self.START_F), QTableWidgetItem(str(version.startFrame())))
@@ -193,6 +188,14 @@ class ViewWidget(QTableWidget):
 		else:
 			self.setItem(row, self.header.index(self.START_F), QTableWidgetItem('X'))
 			self.setItem(row, self.header.index(self.END_F), QTableWidgetItem('X'))
+
+		for i in range(self.columnCount()):
+			if i != self.header.index(self.VERSION_F):
+				if not version.check():
+					self.item(row, i).setBackground(QColor(Qt.magenta))
+				else:
+					self.item(row, i).setBackground(default_background)
+
 
 if __name__ == '__main__':
 	cacheDrive = 'Q:'

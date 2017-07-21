@@ -61,6 +61,15 @@ class ProjectCahce(object):
 	def findCut(self, cut):
 		return [x for x in self.children() if x.name() == cut][0]
 
+	def checkFiles(self):
+		vers = collect(self, 'VERSION')
+		wrong_vers = []
+		for ver in vers:
+			if not ver.check():
+				print ver.path()
+				wrong_vers.append(ver.path().replace('\\','/'))
+		return wrong_vers
+
 	def flag(self):
 		return 'PROJECT'
 
@@ -122,6 +131,7 @@ class CutCache(object):
 		return 'CUT'
 
 
+
 class Cache(object):
 	def __init__(self, fileType, name, parent, seq_flag, que, verRegex = '^\w\d+'):
 		self.__version_regex = re.compile(verRegex)
@@ -131,12 +141,17 @@ class Cache(object):
 		self.__seq_flag = seq_flag
 		self.read()
 		que.put(self)
+		self.__msgFile = os.path.join(self.path(), 'msg')
+		if not os.path.isfile(self.__msgFile):
+			with open(self.__msgFile, 'w') as file:
+				json.dump({'Comments' : ['']}, file)
+
 
 	def parent(self):
 		return self.__parent
 
 	def path(self):
-		return os.path.join(self.parent().path(), self.name())
+		return os.path.join(self.parent().path(), self.fileType(), self.cacheName())
 
 	def name(self):
 		return self.__fileType + '\\' + self.__name
@@ -146,6 +161,20 @@ class Cache(object):
 
 	def fileType(self):
 		return self.__fileType
+
+	def msg(self):
+		with open(self.__msgFile, 'r') as file:
+			return json.load(file)
+
+	def getComments(self):
+		return self.msg()['Comments']
+
+	def sendComment(self, comment):
+		if comment != '' and type(comment) is str:
+			msg = self.getComments()
+			msg['Comments'].append([comment])
+			with open(self.__msgFile, 'w') as file:
+				json.dump(msg, file)
 
 	def read(self):
 		self.__versions = []
@@ -191,6 +220,11 @@ class Version(object):
 		self.__check = True
 		self.findFile()
 		que.put(self)
+		self.__msgFile = os.path.join(self.path(), 'msg')
+		if not os.path.isfile(self.__msgFile) :
+			with open(self.__msgFile, 'w') as file:
+				json.dump({'Comments' : ['']}, file)
+				
 
 	def name(self):
 		return self.__version
@@ -276,6 +310,20 @@ class Version(object):
 	def padding(self):
 		return self.__padding
 
+	def msg(self):
+		with open(self.__msgFile, 'r') as file:
+			return json.load(file)
+
+	def getComments(self):
+		return self.msg()['Comments']
+
+	def sendComment(self, comment):
+		if comment != '' and type(comment) is str:
+			msg = self.msg()
+			msg['Comments'].append([comment])
+			with open(self.__msgFile, 'w') as file:
+				json.dump(msg, file)
+
 	def filenames(self):
 		files = []
 		if self.check() == True:
@@ -324,19 +372,9 @@ if __name__ == '__main__':
 	print a.name()
 	print a.cuts()[0].path()
 	print a.cuts()[0].children()[0].path()
+	print a.cuts()[0].children()[0].msg()
 
-	print len(a.children()[1].children())
-
-	col = collect(a, 'VERSION')
-	print '==='
-	for c in col:
-		print c.filenames()
-		'''
-		if c.seqFlag() == 'SEQ':
-			print c.user(), c.cacheName()
-			print c.startFrame(),c.endFrame(),c.padding()
-		'''
-
-
+	ver = a.cuts()[0].children()[0].children()[0]
+	print ver.msg()
 
 	
