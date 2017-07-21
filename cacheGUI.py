@@ -198,7 +198,7 @@ class ViewWidget(QTableWidget):
 
 
 if __name__ == '__main__':
-	cacheDrive = 'Q:'
+	cacheDrive = 'C:/temp'
 	app = QApplication(sys.argv)
 	mainWindow = MainWidget(cacheDrive = cacheDrive)
 

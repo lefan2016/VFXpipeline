@@ -172,9 +172,14 @@ class Cache(object):
 	def sendComment(self, comment):
 		if comment != '' and type(comment) is str:
 			msg = self.getComments()
-			msg['Comments'].append([comment])
+			msg['Comments'].append([comment + ' - ' + os.environ['COMPUTERNAME']])
 			with open(self.__msgFile, 'w') as file:
 				json.dump(msg, file)
+
+	def eraseMsg(self):
+		with open(self.__msgFile, 'w') as file:
+			json.dump({'Comments' : [None]}, file)
+
 
 	def read(self):
 		self.__versions = []
@@ -223,7 +228,7 @@ class Version(object):
 		self.__msgFile = os.path.join(self.path(), 'msg')
 		if not os.path.isfile(self.__msgFile) :
 			with open(self.__msgFile, 'w') as file:
-				json.dump({'Comments' : ['']}, file)
+				json.dump({'Comments' : [None]}, file)
 				
 
 	def name(self):
@@ -320,9 +325,13 @@ class Version(object):
 	def sendComment(self, comment):
 		if comment != '' and type(comment) is str:
 			msg = self.msg()
-			msg['Comments'].append([comment])
+			msg['Comments'].append([comment + ' - ' + os.environ['COMPUTERNAME']])
 			with open(self.__msgFile, 'w') as file:
 				json.dump(msg, file)
+
+	def eraseMsg(self):
+		with open(self.__msgFile, 'w') as file:
+			json.dump({'Comments' : [None]}, file)
 
 	def filenames(self):
 		files = []
