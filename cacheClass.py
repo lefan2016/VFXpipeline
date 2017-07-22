@@ -1,5 +1,4 @@
-import os
-import re
+import os, re, time
 import threading, Queue
 import json
 
@@ -11,14 +10,14 @@ class ProjectCahce(object):
 		self.__project = ''
 		self.__cuts = []
 		if project_regex.match(project):
-			path = os.path.join(cacheDrive, project)
+			path = os.path.join(cacheDrive + '\\', project)
 			if os.path.exists(path) and os.path.isdir(path):
 				self.__cacheDrive = cacheDrive
 				self.__project = project
 				self.read()
 
 	def exists(self):
-		path = os.path.join(self.__cacheDrive, self.__project)
+		path = os.path.join(self.__cacheDrive + '\\', self.__project)
 		if os.path.exists(path) and os.path.isdir(path) and self.__project != '':
 			return True
 		else:
@@ -26,7 +25,7 @@ class ProjectCahce(object):
 
 	def read(self):
 		self.__cuts = []
-		path = os.path.join(self.__cacheDrive, self.__project)
+		path = os.path.join(self.path())
 		ths = []
 		que = Queue.Queue()
 		for ele in os.listdir(path):
@@ -141,11 +140,7 @@ class Cache(object):
 		self.__seq_flag = seq_flag
 		self.read()
 		que.put(self)
-		self.__msgFile = os.path.join(self.path(), 'msg')
-		if not os.path.isfile(self.__msgFile):
-			with open(self.__msgFile, 'w') as file:
-				json.dump({'Comments' : ['']}, file)
-
+		self.__msg = MSG(os.path.join(self.path(), 'msg'))
 
 	def parent(self):
 		return self.__parent
@@ -163,18 +158,7 @@ class Cache(object):
 		return self.__fileType
 
 	def msg(self):
-		with open(self.__msgFile, 'r') as file:
-			return json.load(file)
-
-	def getComments(self):
-		return self.msg()['Comments']
-
-	def sendComment(self, comment):
-		if comment != '' and type(comment) is str:
-			msg = self.getComments()
-			msg['Comments'].append([comment + ' - ' + os.environ['COMPUTERNAME']])
-			with open(self.__msgFile, 'w') as file:
-				json.dump(msg, file)
+		return self.__msg
 
 	def eraseMsg(self):
 		with open(self.__msgFile, 'w') as file:
@@ -225,11 +209,7 @@ class Version(object):
 		self.__check = True
 		self.findFile()
 		que.put(self)
-		self.__msgFile = os.path.join(self.path(), 'msg')
-		if not os.path.isfile(self.__msgFile) :
-			with open(self.__msgFile, 'w') as file:
-				json.dump({'Comments' : [None]}, file)
-				
+		self.__msg = MSG(os.path.join(self.path(), 'msg'))
 
 	def name(self):
 		return self.__version
@@ -316,22 +296,7 @@ class Version(object):
 		return self.__padding
 
 	def msg(self):
-		with open(self.__msgFile, 'r') as file:
-			return json.load(file)
-
-	def getComments(self):
-		return self.msg()['Comments']
-
-	def sendComment(self, comment):
-		if comment != '' and type(comment) is str:
-			msg = self.msg()
-			msg['Comments'].append([comment + ' - ' + os.environ['COMPUTERNAME']])
-			with open(self.__msgFile, 'w') as file:
-				json.dump(msg, file)
-
-	def eraseMsg(self):
-		with open(self.__msgFile, 'w') as file:
-			json.dump({'Comments' : [None]}, file)
+		return self.__msg
 
 	def filenames(self):
 		files = []
@@ -358,6 +323,37 @@ class Version(object):
 	def flag(self):
 		return 'VERSION'
 
+class MSG(object):
+	def __init__(self, path):
+		self.path = None
+		if os.path.exists(path) and os.path.isfile(path):
+			self.path = path
+		else:
+			with open(path, 'w') as file:
+				json.dump({'Comments' : [None]}, file)
+
+	def eraseAll(self):
+		with open(self.path, 'w') as file:
+			json.dump({'Comments' : [None]}, file)
+
+	def getContent(self):
+		with open(self.path, 'r') as file:
+			return json.load(file)
+
+	def getComments(self):
+		return self.getContent()['Comments']
+
+	def sendComment(self, comment):
+		if type(comment) is str and comment != '':
+			content = self.getContent()
+			content['Comments'].append([comment, os.environ['COMPUTERNAME'], time.asctime(time.localtime(time.time()))])
+			with open(self.path, 'w') as file:
+				json.dump(content, file)
+
+
+
+
+
 
 def collect(item, flag):
 	returnItem = []
@@ -376,14 +372,23 @@ def collect(item, flag):
 
 if __name__ == '__main__':
 
-	a = ProjectCahce(project = '201706_FuriousWings')
+	a = ProjectCahce(cacheDrive = 'C:', project = '201706_FuriousWings')
 	print a.exists()
 	print a.name()
+	print a.path()
 	print a.cuts()[0].path()
 	print a.cuts()[0].children()[0].path()
-	print a.cuts()[0].children()[0].msg()
 
-	ver = a.cuts()[0].children()[0].children()[0]
-	print ver.msg()
+	col = collect(a, 'CACHE')
 
+	for c in col:
+		#c.msg().sendComment('TEST2')
+		print c.msg().getComments()
+		print c.name()
+
+	'''
+	col = collect(a, 'CACHE')
+	for c in col:
+		print c.msg().eraseAll()
+	'''
 	

@@ -17,7 +17,7 @@ class MainWidget(QWidget):
 		self.setWindowTitle('VFX Pipeline Tool')
 		self.resize(860,540)
 
-		self.view_widget = ViewWidget(item = self.cutItem)
+		self.view_widget = ViewWidget(item = self.cutItem, parent = self)
 
 		top_hlayout = QHBoxLayout()
 		main_vlayout = QVBoxLayout()
@@ -25,35 +25,8 @@ class MainWidget(QWidget):
 		self.projects_cb = QComboBox()
 		self.cuts_cb = QComboBox()
 
-		self.cache_textEdit = QTextEdit()
-		self.ver_textEdit = QTextEdit()
-
-		cache_comment_widget = QWidget()
-		self.cache_comment_bn_s = QPushButton('Save Cache Comment')
-		self.cache_comment_bn_r = QPushButton('Read Cache Comment')
-		cache_comment_widget_layout = QVBoxLayout()
-		cache_comment_widget_hlayout = QHBoxLayout()
-		cache_comment_widget_layout.addWidget(QLabel('Cache Comment:'))
-		cache_comment_widget_layout.addWidget(self.cache_textEdit)
-		cache_comment_widget_hlayout.addWidget(self.cache_comment_bn_r)
-		cache_comment_widget_hlayout.addWidget(self.cache_comment_bn_s)
-		cache_comment_widget_layout.addLayout(cache_comment_widget_hlayout)
-		cache_comment_widget.setLayout(cache_comment_widget_layout)
-
-		ver_comment_widget = QWidget()
-		self.ver_comment_bn_s = QPushButton('Save Version Comment')
-		self.ver_comment_bn_r = QPushButton('Read Version Comment')
-		ver_comment_widget_layout = QVBoxLayout()
-		ver_comment_widget_hlayout = QHBoxLayout()
-		ver_comment_widget_layout.addWidget(QLabel('Version Comment:'))
-		ver_comment_widget_layout.addWidget(self.ver_textEdit)
-		ver_comment_widget_hlayout.addWidget(self.ver_comment_bn_r)
-		ver_comment_widget_hlayout.addWidget(self.ver_comment_bn_s)
-		ver_comment_widget_layout.addLayout(ver_comment_widget_hlayout)
-		ver_comment_widget.setLayout(ver_comment_widget_layout)
-
 		projects = []
-		path = os.path.join(self.__cacheDrive)
+		path = os.path.join(self.__cacheDrive + '\\')
 		for direct in os.listdir(path):
 			if os.path.isdir(os.path.join(path, direct)) and self.__projRegex.match(direct):
 				projects += [direct]
@@ -72,6 +45,9 @@ class MainWidget(QWidget):
 		self.splitter = QSplitter()
 		self.splitter.setOrientation(Qt.Vertical)
 
+		self.cache_comment_widget = CommentWidget(label = 'Cache')
+		self.ver_comment_widget = CommentWidget(label = 'Version')
+
 		label = QLabel('Project:')
 		label.setFixedWidth(40)
 		top_hlayout.addWidget(label)
@@ -83,8 +59,8 @@ class MainWidget(QWidget):
 		main_vlayout.addLayout(top_hlayout)
 
 		self.splitter.addWidget(self.view_widget)
-		self.splitter.addWidget(cache_comment_widget)
-		self.splitter.addWidget(ver_comment_widget)
+		self.splitter.addWidget(self.cache_comment_widget)
+		self.splitter.addWidget(self.ver_comment_widget)
 
 		main_vlayout.addWidget(self.splitter)
 
@@ -93,8 +69,10 @@ class MainWidget(QWidget):
 		self.projects_cb.currentIndexChanged.connect(self.pick_project)
 		self.cuts_cb.currentIndexChanged.connect(self.pick_cut)
 
+		self.connect(self.view_widget, SIGNAL("itemClicked (QTableWidgetItem*)"), self.selectCache) 
+
 	def pick_project(self):
-		self.projectItem  = cc.ProjectCahce(project = self.projects_cb.currentText())		
+		self.projectItem  = cc.ProjectCahce(cacheDrive = self.__cacheDrive, project = self.projects_cb.currentText())
 		self.refresh_cuts_cb()
 		self.view_widget.cutChange(self.cutItem)
 
@@ -114,13 +92,17 @@ class MainWidget(QWidget):
 			cuts += [cut.name()]
 		self.cuts_cb.addItems(cuts)
 
-
-
-
+	def selectCache(self, item):
+		row = item.row()
+		cacheItem = self.view_widget.getCacheItem(row)
+		versionItem = self.view_widget.getVersionItem(row)
+		self.cache_comment_widget.listWidget.refresh(cacheItem)
+		self.ver_comment_widget.listWidget.refresh(versionItem)
 
 class ViewWidget(QTableWidget):
 	def __init__(self, item, parent = None):
 		super(ViewWidget, self).__init__(parent)
+		self.__parent = parent
 		self.cutItem = item
 		self.USER_F = 'User'
 		self.CACHE_NAME_F = 'Cache Name'
@@ -130,6 +112,8 @@ class ViewWidget(QTableWidget):
 		self.END_F = 'End'
 		self.header = [self.USER_F, self.CACHE_NAME_F, self.VERSION_F, self.TYPE_F, self.START_F, self.END_F]
 		self.cacheItems = []
+		self.mapper = QSignalMapper(self)
+		self.mapper.mapped[int].connect(self.verChange)
 		self.initUI()
 
 	def initUI(self):		
@@ -138,9 +122,7 @@ class ViewWidget(QTableWidget):
 		self.setEditTriggers(QAbstractItemView.NoEditTriggers)
 		self.setSelectionBehavior(QAbstractItemView.SelectRows)
 		self.setSelectionMode(QAbstractItemView.SingleSelection)
-
-		self.mapper = QSignalMapper(self)
-		self.mapper.mapped[int].connect(self.verChange)
+		
 		if self.cutItem != None:
 			self.cutChange(self.cutItem)
 				
@@ -169,16 +151,18 @@ class ViewWidget(QTableWidget):
 				self.mapper.setMapping(cb, i)
 				
 				version = j.findVersion(cb.currentText())
-				self.setRow(i, version)
+				self.rowSetting(i, version)
 			self.resizeRowsToContents()
 			self.resizeColumnsToContents()
 
 	def verChange(self,row):
 		cb = self.cellWidget(row, self.header.index(self.VERSION_F))
 		version = self.cacheItems[row].findVersion(cb.currentText())
-		self.setRow(row, version)
+		self.rowSetting(row, version)
+		self.selectRow(row)
+		self.__parent.ver_comment_widget.listWidget.refresh(version)
 
-	def setRow(self, row, version):
+	def rowSetting(self, row, version):
 		self.setItem(row, self.header.index(self.USER_F), QTableWidgetItem(version.user()))
 		default_background = self.item(row, self.header.index(self.USER_F)).background()				
 		self.setItem(row, self.header.index(self.TYPE_F), QTableWidgetItem(version.fileType()))
@@ -196,9 +180,91 @@ class ViewWidget(QTableWidget):
 				else:
 					self.item(row, i).setBackground(default_background)
 
+	def getCacheItems(self):
+		return self.cacheItems
+
+	def getCacheItem(self, row):
+		return self.cacheItems[row]
+
+	def getVersionItem(self, row):
+		return self.cacheItem(row).children()
+
+	def getVersionItem(self, row):
+		ver = self.cellWidget(row, self.header.index(self.VERSION_F)).currentText()
+		return self.getCacheItem(row).findVersion(ver)
+
+
+
+
+class CommentWidget(QWidget):
+	def __init__(self, label, parent = None):
+		super(CommentWidget, self).__init__(parent)
+		self.label = label
+		self.initUI()
+
+	def initUI(self):
+		self.comment_send_bn = QPushButton('Send')
+		self.comment_read_bn = QPushButton('Read ' + self.label + ' Comment')
+		main_layout = QVBoxLayout()
+		send_hlayout = QHBoxLayout()
+		read_hlayout = QHBoxLayout()
+		main_layout.addWidget(QLabel(self.label + ' Comment:'))
+
+		self.listWidget = CommentListWidget()
+		self.lineEdit = QLineEdit()
+
+		main_layout.addWidget(self.listWidget)
+		send_hlayout.addWidget(self.lineEdit)
+		send_hlayout.addWidget(self.comment_send_bn)
+		read_hlayout.addWidget(self.comment_read_bn)
+		
+		main_layout.addLayout(send_hlayout)
+		main_layout.addLayout(read_hlayout)
+		self.setLayout(main_layout)
+
+		self.comment_send_bn.clicked.connect(self.sendComment)
+
+	def sendComment(self):
+		self.listWidget.sendComment(self.lineEdit.text())
+		self.lineEdit.setText('')
+
+
+class CommentListWidget(QListWidget):
+	def __init__(self, item = None, parent = None):
+		super(CommentListWidget, self).__init__(parent)
+		self.__item = item
+		self.setAlternatingRowColors(True)
+		if self.__item != None:
+			self.__item = item
+			self.initUI()
+
+	def initUI(self):
+		self.refresh(self.__item)
+
+	def refresh(self, item):
+		self.clear()
+		if self.getItem() != item:
+			self.__item = item
+		pointer = 0
+		for comment in self.__item.msg().getComments():
+			if comment != None:
+				self.addItem(str(comment[0]))
+				widgetItem = self.item(pointer)
+				widgetItem.setToolTip(' / '.join([comment[1], comment[2]]))
+				pointer += 1
+
+	def sendComment(self, comment):
+		self.getItem().msg().sendComment(str(comment))
+		self.refresh(self.getItem())
+
+	def getItem(self):
+		return self.__item
+
+
+
 
 if __name__ == '__main__':
-	cacheDrive = 'C:/temp'
+	cacheDrive = 'C:'
 	app = QApplication(sys.argv)
 	mainWindow = MainWidget(cacheDrive = cacheDrive)
 
