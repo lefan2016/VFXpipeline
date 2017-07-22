@@ -157,14 +157,15 @@ class ViewWidget(QTableWidget):
 
 	def verChange(self,row):
 		cb = self.cellWidget(row, self.header.index(self.VERSION_F))
-		version = self.cacheItems[row].findVersion(cb.currentText())
+		version = self.getCacheItem(row).findVersion(cb.currentText())
 		self.rowSetting(row, version)
 		self.selectRow(row)
-		self.__parent.ver_comment_widget.listWidget.refresh(version)
+		self.__parent.cache_comment_widget.listWidget.refresh(self.getCacheItem(row))
+		self.__parent.ver_comment_widget.listWidget.refresh(self.getVersionItem(row))
 
 	def rowSetting(self, row, version):
 		self.setItem(row, self.header.index(self.USER_F), QTableWidgetItem(version.user()))
-		default_background = self.item(row, self.header.index(self.USER_F)).background()				
+		#default_background = self.item(row, self.header.index(self.USER_F)).background()	
 		self.setItem(row, self.header.index(self.TYPE_F), QTableWidgetItem(version.fileType()))
 		if version.seqFlag() == 'SEQ':
 			self.setItem(row, self.header.index(self.START_F), QTableWidgetItem(str(version.startFrame())))
@@ -172,13 +173,14 @@ class ViewWidget(QTableWidget):
 		else:
 			self.setItem(row, self.header.index(self.START_F), QTableWidgetItem('X'))
 			self.setItem(row, self.header.index(self.END_F), QTableWidgetItem('X'))
-
+		'''
 		for i in range(self.columnCount()):
 			if i != self.header.index(self.VERSION_F):
 				if not version.check():
 					self.item(row, i).setBackground(QColor(Qt.magenta))
 				else:
 					self.item(row, i).setBackground(default_background)
+		'''
 
 	def getCacheItems(self):
 		return self.cacheItems
