@@ -3,12 +3,13 @@ import threading, Queue
 import json
 
 class ProjectCahce(object):
-	def __init__(self, project, cacheDrive = 'Q:', projRegex = '^\d{6}\w+', cutRegex = '^\C'):
+	def __init__(self, project, cacheDrive = 'Q:', projRegex = '^\d{6}\w+', cutRegex = '^\C', mThread = True):
 		self.__cut_regex = re.compile(cutRegex)
 		project_regex = re.compile(projRegex)
 		self.__cacheDrive = cacheDrive
 		self.__project = ''
 		self.__cuts = []
+		self.__mThread = mThread
 		if project_regex.match(project):
 			path = os.path.join(cacheDrive + '\\', project)
 			if os.path.exists(path) and os.path.isdir(path):
@@ -26,19 +27,26 @@ class ProjectCahce(object):
 	def read(self):
 		self.__cuts = []
 		path = os.path.join(self.path())
-		ths = []
-		que = Queue.Queue()
-		for ele in os.listdir(path):
-			if self.__cut_regex.match(ele):
-				th = threading.Thread(target = CutCache, kwargs = {'cut' : ele, 'parent' : self, 'que' : que})
-				#self.__cuts.append(CutCache(cut = ele, parent = self))
-				th.start()
-				ths.append(th)
-		
-		for th in ths:
-			th.join()
-		while not que.empty():
-			self.__cuts.append(que.get())
+
+		if self.__mThread == 1:
+			ths = []
+			que = Queue.Queue()
+			for ele in os.listdir(path):
+				if self.__cut_regex.match(ele):
+					th = threading.Thread(target = CutCache, kwargs = {'cut' : ele, 'parent' : self, 'que' : que})
+					#self.__cuts.append(CutCache(cut = ele, parent = self))
+					th.start()
+					ths.append(th)
+			
+			for th in ths:
+				th.join()
+			while not que.empty():
+				self.__cuts.append(que.get())
+
+		else:
+			for ele in os.listdir(path):
+				if self.__cut_regex.match(ele):
+					self.__cuts.append(CutCache(cut = ele, parent = self, mThread = 0))
 		
 		self.__cuts = sorted(self.__cuts, key = lambda x: x.name())
 
@@ -74,15 +82,19 @@ class ProjectCahce(object):
 
 
 class CutCache(object):
-	def __init__(self, cut, parent, que):
+	def __init__(self, cut, parent, que = None, mThread = 1):
 		self.__cacheFilter = [['abc', 'obj'],['vdb','prt']]
 		self.__parent = parent
 		self.__cut = cut
+		self.__mThread = mThread
+		if self.__mThread == 1:
+			que.put(self)
 		self.read()
-		que.put(self)
 
 	def read(self):
 		self.__caches = []
+
+
 		que = Queue.Queue()
 		ths = []
 		for cacheType in os.listdir(self.path()):
@@ -92,13 +104,18 @@ class CutCache(object):
 						for i,j in enumerate(self.__cacheFilter):
 							if cacheType in self.__cacheFilter[i]:
 								#self.__caches.append(Cache(fileType = cacheType, name = name, parent = self, seq_flag = i))
-								th = threading.Thread(target = Cache, kwargs = {'fileType' : cacheType, 'name' : name, 'parent' : self, 'seq_flag' : i, 'que' : que})
-								th.start()
-								ths.append(th)
-		for th in ths:
-			th.join()
-		while not que.empty():
-			self.__caches.append(que.get())
+								if self.__mThread == 1:
+									th = threading.Thread(target = Cache, kwargs = {'fileType' : cacheType, 'name' : name, 'parent' : self, 'seq_flag' : i, 'que' : que})
+									th.start()
+									ths.append(th)
+								else:
+									self.__caches.append(Cache(fileType = cacheType, name = name, parent = self, seq_flag = i, mThread = 0))
+
+		if self.__mThread == 1:
+			for th in ths:
+				th.join()
+			while not que.empty():
+				self.__caches.append(que.get())
 
 		self.__caches = sorted(self.__caches, key = lambda x: x.name())
 
@@ -132,14 +149,16 @@ class CutCache(object):
 
 
 class Cache(object):
-	def __init__(self, fileType, name, parent, seq_flag, que, verRegex = '^\w\d+'):
+	def __init__(self, fileType, name, parent, seq_flag, que = None, verRegex = '^\w\d+', mThread = 1):
 		self.__version_regex = re.compile(verRegex)
+		self.__mThread = mThread
 		self.__parent = parent
 		self.__fileType = fileType
 		self.__name = name
 		self.__seq_flag = seq_flag
+		if self.__mThread == 1:
+			que.put(self)
 		self.read()
-		que.put(self)
 		self.__msg = MSG(os.path.join(self.path(), 'msg'))
 
 	def parent(self):
@@ -167,19 +186,25 @@ class Cache(object):
 
 	def read(self):
 		self.__versions = []
-		que = Queue.Queue()
-		ths = []
-		for dirs in os.listdir(self.path()):
-			if os.path.isdir(os.path.join(self.path(), dirs)) and self.__version_regex.match(dirs):
-				#self.__versions.append(Version(version = dirs, parent = self, seq_flag = self.__seq_flag))
-				th = threading.Thread(target = Version, kwargs = {'version' : dirs, 'parent' : self, 'seq_flag' : self.__seq_flag, 'que' : que})
-				th.start()
-				ths.append(th)
 
-		for th in ths:
-			th.join()
-		while not que.empty():
-			self.__versions.append(que.get())
+		if self.__mThread == 1:
+			que = Queue.Queue()
+			ths = []
+			for dirs in os.listdir(self.path()):
+				if os.path.isdir(os.path.join(self.path(), dirs)) and self.__version_regex.match(dirs):
+					#self.__versions.append(Version(version = dirs, parent = self, seq_flag = self.__seq_flag))
+					th = threading.Thread(target = Version, kwargs = {'version' : dirs, 'parent' : self, 'seq_flag' : self.__seq_flag, 'que' : que})
+					th.start()
+					ths.append(th)
+
+			for th in ths:
+				th.join()
+			while not que.empty():
+				self.__versions.append(que.get())
+		else:
+			for dirs in os.listdir(self.path()):
+				if os.path.isdir(os.path.join(self.path(), dirs)) and self.__version_regex.match(dirs):
+					self.__versions.append(Version(version = dirs, parent = self, seq_flag = self.__seq_flag, mThread = 0))
 
 		self.__versions = sorted(self.__versions, key = lambda x: x.name())
 
@@ -197,8 +222,9 @@ class Cache(object):
 
 
 class Version(object):
-	def __init__(self, version, parent, seq_flag, que):
+	def __init__(self, version, parent, seq_flag, que = None, mThread = 1):
 		self.__parent = parent
+		self.__mThread = mThread
 		self.__version = version
 		self.__seq_flag = seq_flag
 		self.__filename = ''
@@ -207,8 +233,10 @@ class Version(object):
 		self.__endFrame = 0
 		self.__padding = 0
 		self.__check = True
+		if self.__mThread == 1:
+			que.put(self)
+
 		self.findFile()
-		que.put(self)
 		self.__msg = MSG(os.path.join(self.path(), 'msg'))
 
 		if not os.path.exists(self.previewPath()) or not os.path.isdir(self.previewPath()):
@@ -417,7 +445,7 @@ def collect(item, flag):
 
 if __name__ == '__main__':
 
-	a = ProjectCahce(cacheDrive = 'C:', project = '201706_FuriousWings')
+	a = ProjectCahce(mThread = 1, cacheDrive = 'C:', project = '201706_FuriousWings')
 	print a.exists()
 	print a.name()
 	print a.path()

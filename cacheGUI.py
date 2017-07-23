@@ -106,6 +106,19 @@ class ViewWidget(QTableWidget):
 		super(ViewWidget, self).__init__(parent)
 		self.__parent = parent
 		self.cutItem = item
+
+		self.initHead()
+
+		self.cacheItems = []
+
+		self.mapper = QSignalMapper(self)
+		self.mapper.mapped[int].connect(self.verChange)
+
+		self.preview_mapper = QSignalMapper(self)
+		self.preview_mapper.mapped[int].connect(self.openPreview)
+		self.initUI()
+
+	def initHead(self):
 		self.USER_F = 'User'
 		self.CACHE_NAME_F = 'Cache Name'
 		self.VERSION_F = 'ver.'
@@ -116,14 +129,10 @@ class ViewWidget(QTableWidget):
 		self.SEQ_CB_F = 'Sequence'
 		self.POST_SCALE_F = 'Post Scale'
 		self.header = [self.USER_F, self.CACHE_NAME_F, self.VERSION_F, self.TYPE_F, self.SEQ_CB_F, self.START_F, self.END_F, self.POST_SCALE_F, self.PREVIEW_B_F]
-		self.cacheItems = []
+		self.initHeadForMaya()
 
-		self.mapper = QSignalMapper(self)
-		self.mapper.mapped[int].connect(self.verChange)
-
-		self.preview_mapper = QSignalMapper(self)
-		self.preview_mapper.mapped[int].connect(self.openPreview)
-		self.initUI()
+	def initHeadForMaya(self):
+		pass
 
 	def initUI(self):		
 		self.setColumnCount(len(self.header))
@@ -192,6 +201,7 @@ class ViewWidget(QTableWidget):
 		self.preview_mapper.setMapping(preview_bn, row)
 
 		self.setItem(row, self.header.index(self.SEQ_CB_F), QTableWidgetItem('V' if version.seqFlag() == 'SEQ' else 'X'))
+
 		scale = version.getScale()
 		if len(set(scale)) == 1:
 			scale = scale[0]
@@ -205,6 +215,10 @@ class ViewWidget(QTableWidget):
 				else:
 					self.item(row, i).setBackground(default_background)
 		'''
+		self.rowSettingForMaya(row, version)
+
+	def rowSettingForMaya(self):
+		pass
 
 	def getCacheItems(self):
 		return self.cacheItems
