@@ -1,4 +1,4 @@
-import os, re, sys
+import os, re, sys, subprocess
 import cacheClass as cc
 from PySide.QtCore import *
 from PySide.QtGui import *
@@ -15,7 +15,7 @@ class MainWidget(QWidget):
 		self.__projRegex = re.compile(projRegex)
 
 		self.setWindowTitle('VFX Pipeline Tool')
-		self.resize(860,540)
+		self.resize(860,720)
 
 		self.view_widget = ViewWidget(item = self.cutItem, parent = self)
 
@@ -99,6 +99,8 @@ class MainWidget(QWidget):
 		self.cache_comment_widget.listWidget.refresh(cacheItem)
 		self.ver_comment_widget.listWidget.refresh(versionItem)
 
+############
+
 class ViewWidget(QTableWidget):
 	def __init__(self, item, parent = None):
 		super(ViewWidget, self).__init__(parent)
@@ -110,10 +112,17 @@ class ViewWidget(QTableWidget):
 		self.TYPE_F = 'Type'
 		self.START_F = 'Start'
 		self.END_F = 'End'
-		self.header = [self.USER_F, self.CACHE_NAME_F, self.VERSION_F, self.TYPE_F, self.START_F, self.END_F]
+		self.PREVIEW_B_F = 'Open Preview'
+		self.SEQ_CB_F = 'Sequence'
+		self.POST_SCALE_F = 'Post Scale'
+		self.header = [self.USER_F, self.CACHE_NAME_F, self.VERSION_F, self.TYPE_F, self.SEQ_CB_F, self.START_F, self.END_F, self.POST_SCALE_F, self.PREVIEW_B_F]
 		self.cacheItems = []
+
 		self.mapper = QSignalMapper(self)
 		self.mapper.mapped[int].connect(self.verChange)
+
+		self.preview_mapper = QSignalMapper(self)
+		self.preview_mapper.mapped[int].connect(self.openPreview)
 		self.initUI()
 
 	def initUI(self):		
@@ -155,6 +164,10 @@ class ViewWidget(QTableWidget):
 			self.resizeRowsToContents()
 			self.resizeColumnsToContents()
 
+	def openPreview(self, row):
+		version = self.getCacheItem(row).findVersion(self.cellWidget(row,self.header.index(self.VERSION_F)).currentText())
+		subprocess.call("explorer " + version.previewPath(), shell=True)		
+
 	def verChange(self,row):
 		cb = self.cellWidget(row, self.header.index(self.VERSION_F))
 		version = self.getCacheItem(row).findVersion(cb.currentText())
@@ -171,8 +184,16 @@ class ViewWidget(QTableWidget):
 			self.setItem(row, self.header.index(self.START_F), QTableWidgetItem(str(version.startFrame())))
 			self.setItem(row, self.header.index(self.END_F), QTableWidgetItem(str(version.endFrame())))
 		else:
-			self.setItem(row, self.header.index(self.START_F), QTableWidgetItem('X'))
-			self.setItem(row, self.header.index(self.END_F), QTableWidgetItem('X'))
+			self.setItem(row, self.header.index(self.START_F), QTableWidgetItem(' '))
+			self.setItem(row, self.header.index(self.END_F), QTableWidgetItem(' '))
+		preview_bn = QPushButton('Open Folder')
+		self.setCellWidget(row, self.header.index(self.PREVIEW_B_F), preview_bn)
+		preview_bn.clicked.connect(self.preview_mapper.map)
+		self.preview_mapper.setMapping(preview_bn, row)
+
+		self.setItem(row, self.header.index(self.SEQ_CB_F), QTableWidgetItem('V' if version.seqFlag() == 'SEQ' else 'X'))
+		self.setItem(row, self.header.index(self.POST_SCALE_F), QTableWidgetItem(str(version.getScale())))
+
 		'''
 		for i in range(self.columnCount()):
 			if i != self.header.index(self.VERSION_F):
@@ -196,7 +217,7 @@ class ViewWidget(QTableWidget):
 		return self.getCacheItem(row).findVersion(ver)
 
 
-
+#################
 
 class CommentWidget(QWidget):
 	def __init__(self, label, parent = None):
@@ -230,6 +251,7 @@ class CommentWidget(QWidget):
 		self.listWidget.sendComment(self.lineEdit.text())
 		self.lineEdit.setText('')
 
+####################
 
 class CommentListWidget(QListWidget):
 	def __init__(self, item = None, parent = None):
@@ -254,6 +276,7 @@ class CommentListWidget(QListWidget):
 				widgetItem = self.item(pointer)
 				widgetItem.setToolTip(' / '.join([comment[1], comment[2]]))
 				pointer += 1
+		self.scrollToItem(self.item(pointer - 1))
 
 	def sendComment(self, comment):
 		self.getItem().msg().sendComment(str(comment))

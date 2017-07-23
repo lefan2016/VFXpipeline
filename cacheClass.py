@@ -211,6 +211,9 @@ class Version(object):
 		que.put(self)
 		self.__msg = MSG(os.path.join(self.path(), 'msg'))
 
+		if not os.path.exists(self.previewPath()) or not os.path.isdir(self.previewPath()):
+			os.mkdir(self.previewPath())
+
 	def name(self):
 		return self.__version
 
@@ -310,9 +313,23 @@ class Version(object):
 					files += [name]
 		return files
 
+	def previewPath(self):
+		return os.path.join(self.path(), 'preview')
+
+	def getScale(self):
+		return self.msg().getScale()
+
+	def setScale(self, xyz):
+		self.msg().setScale(xyz)
 
 	def check(self):
 		return self.__check
+
+	def checkSeq(self):
+		if self.__seq_flag == 1:
+			return True
+		else:
+			return False
 
 	def seqFlag(self):
 		if self.__seq_flag == 1:
@@ -350,6 +367,34 @@ class MSG(object):
 			with open(self.path, 'w') as file:
 				json.dump(content, file)
 
+	def getPostAdjust(self):
+		if 'postAdjust' not in self.getContent().keys():
+			return None
+		else:
+			return self.getContent()['postAdjust']
+
+	def getScale(self):
+		if 'scale' not in self.getPostAdjust().keys():
+			return (1,1,1)
+		else:
+			return self.getPostAdjust()['scale']
+
+	def setScale(self, xyz):
+		postAdjust = 'postAdjust'
+		if type(xyz) is int or type(xyz) is float:
+			xyz = (xyz,xyz,xyz)
+		if len(xyz) == 3:
+			content = self.getContent()
+			if postAdjust not in content.keys():
+				content[postAdjust] = {}
+				with open(self.path, 'w') as file:
+					json.dump(content, file)
+			content = self.getContent()
+			content[postAdjust]['scale'] = xyz
+			with open(self.path, 'w') as file:
+					json.dump(content, file)
+
+
 
 
 
@@ -379,12 +424,13 @@ if __name__ == '__main__':
 	print a.cuts()[0].path()
 	print a.cuts()[0].children()[0].path()
 
-	col = collect(a, 'CACHE')
+	col = collect(a, 'VERSION')
 
 	for c in col:
 		#c.msg().sendComment('TEST2')
-		print c.msg().getComments()
-		print c.name()
+		#print c.msg().getContent()
+		#print c.name()
+		c.setScale(20)
 
 	'''
 	col = collect(a, 'CACHE')
