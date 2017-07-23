@@ -192,7 +192,10 @@ class ViewWidget(QTableWidget):
 		self.preview_mapper.setMapping(preview_bn, row)
 
 		self.setItem(row, self.header.index(self.SEQ_CB_F), QTableWidgetItem('V' if version.seqFlag() == 'SEQ' else 'X'))
-		self.setItem(row, self.header.index(self.POST_SCALE_F), QTableWidgetItem(str(version.getScale())))
+		scale = version.getScale()
+		if len(set(scale)) == 1:
+			scale = scale[0]
+		self.setItem(row, self.header.index(self.POST_SCALE_F), QTableWidgetItem(str(scale)))
 
 		'''
 		for i in range(self.columnCount()):
