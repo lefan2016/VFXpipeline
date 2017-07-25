@@ -328,6 +328,12 @@ class Version(object):
     def msg(self):
         return self.__msg
 
+    def linkname(self):
+        if self.seqFlag() == 'SEQ':
+            return self.filename() + '.' + '#'*self.padding() + '.' + self.fileType()
+        else:
+            return self.filename() + '.' + self.fileType()
+
     def filenames(self):
         files = []
         if self.check() == True:
@@ -455,15 +461,11 @@ if __name__ == '__main__':
     print a.cuts()[0].path()
     print a.cuts()[0].children()[0].path()
 
-    col = collect(a, 'VERSION')
 
-
-    col = collect(a, 'VERSION')
-    for c in col:
-        c.msg().eraseAll()
     
-    col = collect(a, 'CACHE')
-    for c in col:
-        c.msg().eraseAll()
+    col = collect(a, 'VERSION')
+    for i,c in enumerate(col):
+
+        print i, c.parent().name() + '==' + c.linkname()
     
     

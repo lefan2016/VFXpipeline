@@ -116,6 +116,9 @@ class ViewWidget(QTableWidget):
 
         self.preview_mapper = QSignalMapper(self)
         self.preview_mapper.mapped[int].connect(self.openPreview)
+
+        self.setScale_mapper = QSignalMapper(self)
+        self.setScale_mapper.mapped[int].connect(self.setScale)
         self.initUI()
 
     def initHead(self):
@@ -128,7 +131,8 @@ class ViewWidget(QTableWidget):
         self.PREVIEW_B_F = 'Open Preview'
         self.SEQ_CB_F = 'Sequence'
         self.POST_SCALE_F = 'Post Scale'
-        self.header = [self.USER_F, self.CACHE_NAME_F, self.VERSION_F, self.TYPE_F, self.SEQ_CB_F, self.START_F, self.END_F, self.POST_SCALE_F, self.PREVIEW_B_F]
+        self.SET_SCALE_F = 'Set Scale'
+        self.header = [self.USER_F, self.CACHE_NAME_F, self.VERSION_F, self.TYPE_F, self.SEQ_CB_F, self.START_F, self.END_F, self.POST_SCALE_F, self.SET_SCALE_F, self.PREVIEW_B_F]
         self.initHeadForMaya()
 
     def initHeadForMaya(self):
@@ -185,6 +189,16 @@ class ViewWidget(QTableWidget):
         self.__parent.cache_comment_widget.listWidget.refresh(self.getCacheItem(row))
         self.__parent.ver_comment_widget.listWidget.refresh(self.getVersionItem(row))
 
+    def setScale(self, row):
+        ver = self.getVersionItem(row)
+        dialog = ScaleDialog(ver)
+        dialog.show()
+        if dialog.exec_():
+            ver.setScale([float(dialog.xyz_lineEdit[0].text()), float(dialog.xyz_lineEdit[1].text()), float(dialog.xyz_lineEdit[2].text())])
+            self.verChange(row)
+        else:
+            pass
+
     def rowSetting(self, row, version):
         if self.USER_F in self.header:
             self.setItem(row, self.header.index(self.USER_F), QTableWidgetItem(version.user()))
@@ -213,6 +227,14 @@ class ViewWidget(QTableWidget):
                 scale = scale[0]
             self.setItem(row, self.header.index(self.POST_SCALE_F), QTableWidgetItem(str(scale)))
 
+        if self.SET_SCALE_F in self.header:
+            setScale_bn = QPushButton('Set Scale')
+            self.setCellWidget(row, self.header.index(self.SET_SCALE_F), setScale_bn)
+            setScale_bn.clicked.connect(self.setScale_mapper.map)
+            self.setScale_mapper.setMapping(setScale_bn, row)
+
+
+
         '''
         for i in range(self.columnCount()):
             if i != self.header.index(self.VERSION_F):
@@ -238,6 +260,45 @@ class ViewWidget(QTableWidget):
     def getVersionItem(self, row):
         ver = self.cellWidget(row, self.header.index(self.VERSION_F)).currentText()
         return self.getCacheItem(row).findVersion(ver)
+
+###########
+
+class ScaleDialog(QDialog):
+    def __init__(self, ver, parent = None):
+        super(ScaleDialog, self).__init__(parent)
+        self.__ver = ver
+        self.initUI()
+
+    def initUI(self):
+        main_layout = QVBoxLayout()
+        xyz_layout = QHBoxLayout()
+        bn_layout = QHBoxLayout()
+
+        self.xyz_lineEdit = []
+        for i,j in enumerate(['X:', 'Y:', 'Z:']):
+            xyz_layout.addWidget(QLabel(j))
+            self.xyz_lineEdit.append(QLineEdit(str(self.__ver.getScale()[i])))
+            xyz_layout.addWidget(self.xyz_lineEdit[i])
+
+        self.ok_bn = QPushButton('OK')
+        self.cancel_bn = QPushButton('Cancel')
+        bn_layout.addWidget(self.ok_bn)
+        bn_layout.addWidget(self.cancel_bn)
+
+        main_layout.addLayout(xyz_layout)
+        main_layout.addLayout(bn_layout)
+
+        self.setLayout(main_layout)
+
+        self.ok_bn.clicked.connect(lambda: self.submit(1))
+        self.cancel_bn.clicked.connect(lambda: self.submit(0))
+
+    def submit(self, check):
+        if check == 1:
+            self.accept()
+        else:
+            self.close()
+
 
 
 #################
