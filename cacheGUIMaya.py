@@ -112,13 +112,16 @@ class VFXnode(object):
     def getVfxAttr(self):
         cuts = []
         caches = []
-        regex = re.compile('^(vfx_)&(_shape)$')
+        regex = re.compile('^vfx_')
         for attr in cmds.listAttr(self.__node):
-            if regex.match(attr):
+            if regex.match(attr) and cmds.getAttr(self.__node + '.' + attr, type = True) == 'TdataCompound':
                 print attr
                 cuts.append(attr.split('_')[1])
-                caches.append(attr.split('_')[2:-2])
+                caches.append(attr.split('_')[2:])
         print cuts, caches
+
+    def getNamespace(self):
+    	return ':'.join(self.__node.split(':')[:-1])
 
 
 ########
