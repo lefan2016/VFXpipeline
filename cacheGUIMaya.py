@@ -4,6 +4,7 @@ from shiboken import wrapInstance
 from PySide.QtGui import *
 from PySide.QtCore import *
 import maya.cmds as cmds
+import maya.mel as mel
 
 def maya_initHead(self):
     self.M_INMAYA_F = 'in Maya'
@@ -116,6 +117,8 @@ def delete_cache(self, row):
     vfx.deleteCache(cache)
     self.rowSettingForMaya(row, self.getVersionItem(row))
 
+
+
 setattr(cacheGUI.ViewWidget, 'rowSettingForMaya', maya_rowSetting)
 setattr(cacheGUI.ViewWidget, 'initHeadForMaya', maya_initHead)
 
@@ -136,6 +139,7 @@ class VFXnode(object):
         self.__tagTypes = ['message', 'message', 'string', 'string', 'string']
 
     def createVrayVolumeGrid(self, ver):
+        self.unlock()
         cache = ver.parent()
         name = self.compoundName(cache)
         shape_name = '_'.join([name, 'shape'])
@@ -152,21 +156,57 @@ class VFXnode(object):
             self.setWay(cache, 'VolumeGrid')
             self.setScale(ver)
             cmds.setAttr(self.getShapeNode(cache) + '.inFile', ver.path().replace('\\','/') + '/' + self.getFilelink(cache), type = 'string')
+        self.lock()
 
     def updateVrayVolumeGrid(self, ver):
+        self.unlock()
         cache = ver.parent()
         if cache.fileType() == 'vdb':
             self.updateAttr(ver)
             self.setScale(ver)
             cmds.setAttr(self.getShapeNode(cache) + '.inFile', ver.path().replace('\\','/') + '/' + self.getFilelink(cache), type = 'string')
+        self.lock()
+
+    def deleteVrayVolumeGrid(self, cache):
+        self.unlock()
+        self.deleteCache(cache)
+        self.lock()
+
+    def createVrayProxyAbc(self, ver):
+        self.unlock()
+        cache = ver.parent()
+        name = self.compoundName(cache)
+        shape_name = '_'.join([name, 'shape'])
+        xform_name = '_'.join([name, 'xform'])
+        if cache.fileType() == 'abc':
+            path = ver.path().replace('\\','/') + '/' + ver.filename() + '.' + ver.fileType()
+            mel.eval('vrayCreateProxy -node "' + xform_name + '" -dir "'+ path + '" -existing -createProxyNode;')
+            shape = cmds.ls(sl = True)[0]
+            shape = cmds.rename(shape, shape_name)
+            xform = cmds.listRelatives(shape, parent = True)
+            xform = cmds.rename(xform, xform_name)
+            self.createAttr(cache)
+            self.setShapeNode(cache, shape)
+            self.setXformNode(cache, xform)
+            self.setVersion(ver)
+            self.setFilelink(ver)
+            self.setWay(cache, 'VrayProxy')
+            self.setScale(ver)
+            cmds.setAttr(self.getShapeNode(cache) + '.inFile', ver.path().replace('\\','/') + '/' + self.getFilelink(cache), type = 'string')
+        self.lock()
+
 
     def updateAttr(self, ver):
+        self.unlock()
         self.setVersion(ver)
         self.setFilelink(ver)
+        self.lock()
 
     def setShapeNode(self, cache, node):
+        self.unlock()
         shape_attr = self.getTagAttr(cache, 'shape')
         cmds.connectAttr(node + '.message', shape_attr)
+        self.lock()
 
     def getShapeNode(self, cache):
         shape_attr = self.getTagAttr(cache, 'shape')
@@ -175,8 +215,10 @@ class VFXnode(object):
             return shape
 
     def setXformNode(self, cache, node):
+        self.unlock()
         xform_attr = self.getTagAttr(cache, 'xform')
         cmds.connectAttr(node + '.message', xform_attr)
+        self.lock()
 
     def getXformNode(self, cache):
         xform_attr = self.getTagAttr(cache, 'xform')
@@ -185,10 +227,13 @@ class VFXnode(object):
             return xform
 
     def setScale(self, ver):
+        self.unlock()
         cache = ver.parent()
         cmds.setAttr(self.getXformNode(cache) + '.scale', ver.getScale()[0], ver.getScale()[1], ver.getScale()[2])
+        self.lock()
 
     def createAttr(self, cache):
+        self.unlock()
         name = self.compoundName(cache)
         cmds.addAttr(self.__node, longName = name, attributeType = 'compound', numberOfChildren = len(self.__tags))
         for i, tag in enumerate(self.__tags):
@@ -196,6 +241,7 @@ class VFXnode(object):
                 cmds.addAttr(self.__node, longName = '_'.join([name, tag]), attributeType = self.__tagTypes[i], parent = name)
             elif self.__tagTypes[i] == 'string':
                 cmds.addAttr(self.__node, longName = '_'.join([name, tag]), dataType = self.__tagTypes[i], parent = name)
+        self.lock()
 
 
     def getTagAttr(self, cache, tag):
@@ -214,16 +260,20 @@ class VFXnode(object):
         return None
 
     def setVersion(self, ver):
+        self.unlock()
         cache = ver.parent()
         ver_attr = self.getTagAttr(cache, 'ver')
         if ver_attr:
             cmds.setAttr(ver_attr, ver.name(), type = 'string')
             self.setFilelink(ver)
+        self.lock()
 
     def setFilelink(self, ver):
+        self.unlock()
         cache = ver.parent()
         filelink_attr = self.getTagAttr(cache, 'filelink')
         cmds.setAttr(filelink_attr, ver.linkname(), type = 'string')
+        self.lock()
 
     def getFilelink(self, cache):
         filelink_attr = self.getTagAttr(cache, 'filelink')
@@ -234,9 +284,11 @@ class VFXnode(object):
         return cmds.getAttr(way_attr)
 
     def setWay(self, cache, way):
+        self.unlock()
         if type(way) is str:
             way_attr = self.getTagAttr(cache, 'way')
             cmds.setAttr(way_attr, way, type = 'string')
+        self.lock()
 
     def getVfxAttr(self):
         cuts = []
@@ -256,6 +308,7 @@ class VFXnode(object):
         return None
 
     def deleteCache(self, cache):
+        self.unlock()
         cmds.delete(self.getShapeNode(cache))
         cmds.delete(self.getXformNode(cache))
         '''
@@ -264,6 +317,7 @@ class VFXnode(object):
             cmds.deleteAttr(attr)
         '''
         cmds.deleteAttr(self.__node + '.' + self.compoundName(cache))
+        self.lock()
 
     def compoundName(self, cache):
         name = '_'.join(['vfx', cache.parent().name(), cache.name().replace('\\','_')])
@@ -271,6 +325,12 @@ class VFXnode(object):
 
     def getNamespace(self):
     	return ':'.join(self.__node.split(':')[:-1])
+
+    def lock(self):
+        cmds.lockNode(self.__node)
+
+    def unlock(self):
+        cmds.lockNode(self.__node, lock = False)
 
 
 ########
