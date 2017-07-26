@@ -24,26 +24,65 @@ def maya_initHead(self):
 
 
 def maya_rowSetting(self, row, version):
+    if self.M_INMAYA_F in self.header:
+        if findVFXnode() != None:
+            vfx = VFXnode(getVFXnode())
+            if vfx.findCache(version.parent()) != None:
+                vfx = VFXnode(getVFXnode())
+                self.setItem(row, self.header.index(self.M_INMAYA_F), QTableWidgetItem(vfx.getWay(version.parent())))
+            else:
+                self.setItem(row, self.header.index(self.M_INMAYA_F), QTableWidgetItem('X'))
+        else:
+            self.setItem(row, self.header.index(self.M_INMAYA_F), QTableWidgetItem('X'))
+
     if self.M_IMPORT_F in self.header:
         import_bn = QPushButton('Import')
         self.setCellWidget(row, self.header.index(self.M_IMPORT_F), import_bn)
         import_bn.clicked.connect(self.import_mapper.map)
         self.import_mapper.setMapping(import_bn, row)
+        if findVFXnode() != None:
+            vfx = VFXnode(getVFXnode())
+            if vfx.findCache(version.parent()) != None:
+                import_bn.setEnabled(False)
+
     if self.M_UPDATE_F in self.header:
         update_bn = QPushButton('Update')
         self.setCellWidget(row, self.header.index(self.M_UPDATE_F), update_bn)
         update_bn.clicked.connect(self.update_mapper.map)
         self.update_mapper.setMapping(update_bn, row)
+        if findVFXnode() != None:
+            vfx = VFXnode(getVFXnode())
+            if vfx.findCache(version.parent()) == None:
+                update_bn.setEnabled(False)
+            elif vfx.getVersion(version.parent()) == version.name():
+                update_bn.setEnabled(False)
+        else:
+            update_bn.setEnabled(False)
+
+
     if self.M_SELECT_F in self.header:
         select_bn = QPushButton('Select')
         self.setCellWidget(row, self.header.index(self.M_SELECT_F), select_bn)
         select_bn.clicked.connect(self.select_mapper.map)
         self.select_mapper.setMapping(select_bn, row)
+        if findVFXnode() != None:
+            vfx = VFXnode(getVFXnode())
+            if vfx.findCache(version.parent()) == None:
+                select_bn.setEnabled(False)
+        else:
+            select_bn.setEnabled(False)
+
     if self.M_DELETE_F in self.header:
         delete_bn = QPushButton('Delete')
         self.setCellWidget(row, self.header.index(self.M_DELETE_F), delete_bn)
         delete_bn.clicked.connect(self.delete_mapper.map)
         self.delete_mapper.setMapping(delete_bn, row)
+        if findVFXnode() != None:
+            vfx = VFXnode(getVFXnode())
+            if vfx.findCache(version.parent()) == None:
+                delete_bn.setEnabled(False)
+        else:
+            delete_bn.setEnabled(False)
     #preview_bn.clicked.connect(self.preview_mapper.map)
     #self.preview_mapper.setMapping(preview_bn, row)
 
@@ -59,16 +98,23 @@ def import_cache(self, row):
     cache = self.getCacheItem(row)
     if cache.fileType() == 'vdb':
         VFXnode(getVFXnode()).createVrayVolumeGrid(ver)
-    print self.getCacheItem(row).name()
+    self.rowSettingForMaya(row, self.getVersionItem(row))
 
 def select_cache(self, row):
-    print self.getCacheItem(row).name()
+    vfx = VFXnode(getVFXnode())
+    shape_node = vfx.getShapeNode(self.getCacheItem(row))
+    cmds.select(shape_node, r = True)
 
 def update_cache(self, row):
-    print self.getCacheItem(row).name()
+    vfx = VFXnode(getVFXnode())
+    vfx.updateVrayVolumeGrid(self.getVersionItem(row))
+    self.rowSettingForMaya(row, self.getVersionItem(row))
 
 def delete_cache(self, row):
-    print self.getCacheItem(row).name()
+    cache = self.getCacheItem(row)
+    vfx = VFXnode(getVFXnode())
+    vfx.deleteCache(cache)
+    self.rowSettingForMaya(row, self.getVersionItem(row))
 
 setattr(cacheGUI.ViewWidget, 'rowSettingForMaya', maya_rowSetting)
 setattr(cacheGUI.ViewWidget, 'initHeadForMaya', maya_initHead)
@@ -86,39 +132,142 @@ setattr(cacheGUI.ViewWidget, 'disableSetScale', disableSetScale)
 class VFXnode(object):
     def __init__(self, node):
         self.__node = node
+        self.__tags = ['shape', 'xform', 'ver', 'way', 'filelink']
+        self.__tagTypes = ['message', 'message', 'string', 'string', 'string']
 
     def createVrayVolumeGrid(self, ver):
         cache = ver.parent()
-        name = '_'.join(['vfx', cache.parent().name(), cache.name().replace('\\','_')])
+        name = self.compoundName(cache)
         shape_name = '_'.join([name, 'shape'])
         xform_name = '_'.join([name, 'xform'])
         if cache.fileType() == 'vdb':
             shape = cmds.createNode('VRayVolumeGrid', n= shape_name)
             xform = cmds.listRelatives(shape, parent = True)
             xform = cmds.rename(xform, xform_name)
-            cmds.addAttr(self.__node, longName = name, attributeType = 'compound', numberOfChildren = 4)
-            cmds.addAttr(self.__node, longName = shape_name, attributeType = 'message', parent = name)            
-            cmds.addAttr(self.__node, longName = xform_name, attributeType = 'message', parent = name)            
-            cmds.addAttr(self.__node, longName = name + '_ver', dataType = 'string', parent = name)
-            cmds.addAttr(self.__node, longName = name + '_filelink', dataType = 'string', parent = name)
-            cmds.connectAttr(shape + '.message', self.__node + '.' + shape_name)
-            cmds.connectAttr(xform + '.message', self.__node + '.' + xform_name)
-            cmds.setAttr(self.__node + '.' + name + '_ver', ver.name(), type = 'string')
-            cmds.setAttr(self.__node + '.' + name + '_filelink', ver.linkname(), type = 'string')
+            self.createAttr(cache)
+            self.setShapeNode(cache, shape)
+            self.setXformNode(cache, xform)
+            self.setVersion(ver)
+            self.setFilelink(ver)
+            self.setWay(cache, 'VolumeGrid')
+            self.setScale(ver)
+            cmds.setAttr(self.getShapeNode(cache) + '.inFile', ver.path().replace('\\','/') + '/' + self.getFilelink(cache), type = 'string')
 
-            cmds.setAttr(xform + '.scale', ver.getScale()[0], ver.getScale()[1], ver.getScale()[2])
-            cmds.setAttr(shape + '.inFile', ver.path().replace('\\','/') + '/' + ver.linkname(), type = 'string')
-            
+    def updateVrayVolumeGrid(self, ver):
+        cache = ver.parent()
+        if cache.fileType() == 'vdb':
+            self.updateAttr(ver)
+            self.setScale(ver)
+            cmds.setAttr(self.getShapeNode(cache) + '.inFile', ver.path().replace('\\','/') + '/' + self.getFilelink(cache), type = 'string')
+
+    def updateAttr(self, ver):
+        self.setVersion(ver)
+        self.setFilelink(ver)
+
+    def setShapeNode(self, cache, node):
+        shape_attr = self.getTagAttr(cache, 'shape')
+        cmds.connectAttr(node + '.message', shape_attr)
+
+    def getShapeNode(self, cache):
+        shape_attr = self.getTagAttr(cache, 'shape')
+        if shape_attr:
+            shape = cmds.listConnections(shape_attr, sh = True)[0]
+            return shape
+
+    def setXformNode(self, cache, node):
+        xform_attr = self.getTagAttr(cache, 'xform')
+        cmds.connectAttr(node + '.message', xform_attr)
+
+    def getXformNode(self, cache):
+        xform_attr = self.getTagAttr(cache, 'xform')
+        if xform_attr:
+            xform = cmds.listConnections(xform_attr)[0]
+            return xform
+
+    def setScale(self, ver):
+        cache = ver.parent()
+        cmds.setAttr(self.getXformNode(cache) + '.scale', ver.getScale()[0], ver.getScale()[1], ver.getScale()[2])
+
+    def createAttr(self, cache):
+        name = self.compoundName(cache)
+        cmds.addAttr(self.__node, longName = name, attributeType = 'compound', numberOfChildren = len(self.__tags))
+        for i, tag in enumerate(self.__tags):
+            if self.__tagTypes[i] == 'message':
+                cmds.addAttr(self.__node, longName = '_'.join([name, tag]), attributeType = self.__tagTypes[i], parent = name)
+            elif self.__tagTypes[i] == 'string':
+                cmds.addAttr(self.__node, longName = '_'.join([name, tag]), dataType = self.__tagTypes[i], parent = name)
+
+
+    def getTagAttr(self, cache, tag):
+        attr = self.findCache(cache)
+        if attr != None and tag in self.__tags:
+            return self.__node + '.' + '_'.join([attr, self.__tags[self.__tags.index(tag)]])
+        return None
+
+    def getVersion(self, cache):
+        attr = self.findCache(cache)
+        if attr != None:
+            ver_attr = self.getTagAttr(cache, 'ver')
+            if ver_attr != None:
+                ver = cmds.getAttr(ver_attr)
+                return ver
+        return None
+
+    def setVersion(self, ver):
+        cache = ver.parent()
+        ver_attr = self.getTagAttr(cache, 'ver')
+        if ver_attr:
+            cmds.setAttr(ver_attr, ver.name(), type = 'string')
+            self.setFilelink(ver)
+
+    def setFilelink(self, ver):
+        cache = ver.parent()
+        filelink_attr = self.getTagAttr(cache, 'filelink')
+        cmds.setAttr(filelink_attr, ver.linkname(), type = 'string')
+
+    def getFilelink(self, cache):
+        filelink_attr = self.getTagAttr(cache, 'filelink')
+        return cmds.getAttr(filelink_attr)
+
+    def getWay(self, cache):
+        way_attr = self.getTagAttr(cache, 'way')
+        return cmds.getAttr(way_attr)
+
+    def setWay(self, cache, way):
+        if type(way) is str:
+            way_attr = self.getTagAttr(cache, 'way')
+            cmds.setAttr(way_attr, way, type = 'string')
+
     def getVfxAttr(self):
         cuts = []
         caches = []
         regex = re.compile('^vfx_')
         for attr in cmds.listAttr(self.__node):
             if regex.match(attr) and cmds.getAttr(self.__node + '.' + attr, type = True) == 'TdataCompound':
-                print attr
                 cuts.append(attr.split('_')[1])
-                caches.append(attr.split('_')[2:])
-        print cuts, caches
+                caches.append('_'.join(attr.split('_')[2:]))
+        return cuts, caches
+
+    def findCache(self, cache):
+        name = self.compoundName(cache)
+        for attr in cmds.listAttr(self.__node):
+            if attr == name:
+                return attr
+        return None
+
+    def deleteCache(self, cache):
+        cmds.delete(self.getShapeNode(cache))
+        cmds.delete(self.getXformNode(cache))
+        '''
+        for tag in self.__tags:
+            attr = self.getTagAttr(cache, tag)
+            cmds.deleteAttr(attr)
+        '''
+        cmds.deleteAttr(self.__node + '.' + self.compoundName(cache))
+
+    def compoundName(self, cache):
+        name = '_'.join(['vfx', cache.parent().name(), cache.name().replace('\\','_')])
+        return name
 
     def getNamespace(self):
     	return ':'.join(self.__node.split(':')[:-1])
