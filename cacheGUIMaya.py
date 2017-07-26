@@ -145,17 +145,14 @@ class VFXnode(object):
         shape_name = '_'.join([name, 'shape'])
         xform_name = '_'.join([name, 'xform'])
         if cache.fileType() == 'vdb':
-            shape = cmds.createNode('VRayVolumeGrid', n= shape_name)
+            shape = cmds.createNode('VRayVolumeGrid', n = shape_name)
             xform = cmds.listRelatives(shape, parent = True)
             xform = cmds.rename(xform, xform_name)
             self.createAttr(cache)
             self.setShapeNode(cache, shape)
             self.setXformNode(cache, xform)
-            self.setVersion(ver)
-            self.setFilelink(ver)
             self.setWay(cache, 'VolumeGrid')
-            self.setScale(ver)
-            cmds.setAttr(self.getShapeNode(cache) + '.inFile', ver.path().replace('\\','/') + '/' + self.getFilelink(cache), type = 'string')
+            self.updateVrayVolumeGrid(ver)
         self.lock()
 
     def updateVrayVolumeGrid(self, ver):
