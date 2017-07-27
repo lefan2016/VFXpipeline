@@ -90,6 +90,7 @@ def maya_rowSetting(self, row, version):
     if self.SET_SCALE_F in self.header:
         self.disableSetScale(row)
 
+
 def disableSetScale(self, row):
     bn = self.cellWidget(row, self.header.index(self.SET_SCALE_F))
     bn.setEnabled(False)
@@ -99,22 +100,43 @@ def import_cache(self, row):
     cache = self.getCacheItem(row)
     if cache.fileType() == 'vdb':
         VFXnode(getVFXnode()).createVrayVolumeGrid(ver)
+    elif cache.fileType() == 'abc':
+        dialog = AbcConfirm()
+        dialog.show()
+        if dialog.exec_():
+            if dialog.tag == 'maya':
+                VFXnode(getVFXnode()).createMayaRefAbc(ver)
+            elif dialog.tag == 'vray':
+                VFXnode(getVFXnode()).createVrayProxyAbc(ver)
+
     self.rowSettingForMaya(row, self.getVersionItem(row))
 
 def select_cache(self, row):
     vfx = VFXnode(getVFXnode())
-    shape_node = vfx.getShapeNode(self.getCacheItem(row))
-    cmds.select(shape_node, r = True)
+    xform_node = vfx.getXformNode(self.getCacheItem(row))
+    cmds.select(xform_node, r = True)
 
 def update_cache(self, row):
+    cache = self.getCacheItem(row)
+    ver = self.getVersionItem(row)
     vfx = VFXnode(getVFXnode())
-    vfx.updateVrayVolumeGrid(self.getVersionItem(row))
+    if cache.fileType() == 'vdb':
+        vfx.updateVrayVolumeGrid(ver)
+    elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'VrayProxy':
+        vfx.updateVrayProxyAbc(ver)
+    elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'MayaRefAbc':
+        vfx.updateMayaRefAbc(ver)
     self.rowSettingForMaya(row, self.getVersionItem(row))
 
 def delete_cache(self, row):
     cache = self.getCacheItem(row)
     vfx = VFXnode(getVFXnode())
-    vfx.deleteCache(cache)
+    if cache.fileType() == 'vdb':
+        vfx.deleteVrayVolumeGrid(cache)
+    elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'VrayProxy':
+        vfx.deleteVrayProxyAbc(cache)
+    elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'MayaRefAbc':
+        vfx.deleteMayaRefAbc(cache)
     self.rowSettingForMaya(row, self.getVersionItem(row))
 
 
@@ -165,9 +187,7 @@ class VFXnode(object):
         self.lock()
 
     def deleteVrayVolumeGrid(self, cache):
-        self.unlock()
         self.deleteCache(cache)
-        self.lock()
 
     def createVrayProxyAbc(self, ver):
         self.unlock()
@@ -176,7 +196,7 @@ class VFXnode(object):
         shape_name = '_'.join([name, 'shape'])
         xform_name = '_'.join([name, 'xform'])
         if cache.fileType() == 'abc':
-            path = ver.path().replace('\\','/') + '/' + ver.filename() + '.' + ver.fileType()
+            path = ver.path().replace('\\','/') + '/' + ver.linkname()
             mel.eval('vrayCreateProxy -node "' + xform_name + '" -dir "'+ path + '" -existing -createProxyNode;')
             shape = cmds.ls(sl = True)[0]
             shape = cmds.rename(shape, shape_name)
@@ -185,19 +205,93 @@ class VFXnode(object):
             self.createAttr(cache)
             self.setShapeNode(cache, shape)
             self.setXformNode(cache, xform)
-            self.setVersion(ver)
-            self.setFilelink(ver)
             self.setWay(cache, 'VrayProxy')
-            self.setScale(ver)
-            cmds.setAttr(self.getShapeNode(cache) + '.inFile', ver.path().replace('\\','/') + '/' + self.getFilelink(cache), type = 'string')
+            self.updateVrayProxyAbc(ver)
+            vraymesh = cmds.listConnections(self.getShapeNode(cache) + '.inMesh')[0]
+            cmds.setAttr(vraymesh + '.animType', 1)
+            cmds.setAttr(vraymesh + '.useAlembicOffset', 1)
         self.lock()
 
-
-    def updateAttr(self, ver):
+    def updateVrayProxyAbc(self, ver):
         self.unlock()
         self.setVersion(ver)
         self.setFilelink(ver)
+        self.setScale(ver)
+        vraymesh = cmds.listConnections(self.getShapeNode(ver.parent()) + '.inMesh')[0]
+        path = ver.path().replace('\\','/') + '/' + ver.linkname()
+        cmds.setAttr(vraymesh + '.fileName2', path, type = 'string' )
         self.lock()
+
+    def deleteVrayProxyAbc(self, cache):
+        self.unlock()
+        vraymesh = cmds.listConnections(self.getShapeNode(cache) + '.inMesh')[0]
+        timeToUnitConversion = cmds.listConnections(vraymesh + '.currentFrame')[0]
+        cmds.delete(timeToUnitConversion)
+        cmds.delete(vraymesh)
+        
+        self.deleteCache(cache)
+        self.lock()
+
+    def createMayaRefAbc(self, ver):
+        self.unlock()
+        cache = ver.parent()
+        name = self.compoundName(cache)
+        print name
+        shape_name = '_'.join([name, 'shape'])
+        xform_name = '_'.join([name, 'xform'])
+        if ver.fileType() == 'abc':
+            path = ver.path().replace('\\','/') + '/' + ver.linkname()
+            cmds.file(path, r = True, type = 'Alembic', gr = True, gn = xform_name, ignoreVersion = True, mergeNamespacesOnClash = False, namespace = ':')
+
+            shape = cmds.file(path, q = True, rfn = True)
+            cmds.lockNode(shape, l = False)
+            shape = cmds.rename(shape, shape_name)
+            cmds.lockNode(shape)
+            self.createAttr(cache)
+            self.setShapeNode(cache, shape)
+            self.setXformNode(cache, xform_name)
+            self.setWay(cache, 'MayaRefAbc')
+            self.updateMayaRefAbc(ver, initial = True)
+            
+        self.lock()
+
+    def updateMayaRefAbc(self, ver, initial = False):
+        self.unlock()
+        cache = ver.parent()
+        node = self.getShapeNode(ver.parent())
+        path = ver.path().replace('\\','/') + '/' + ver.linkname()
+        if initial == False:
+            cmds.file(path, type = 'Alembic', loadReference = self.getShapeNode(cache))
+
+        xform = self.getXformNode(cache)
+        cmds.lockNode(xform, lock = False)
+        self.setScale(ver)
+        cmds.lockNode(xform)
+
+        self.setVersion(ver)
+        self.setFilelink(ver)
+        self.lock()
+
+    def selectMayaRefAbc(self, cache):
+        node = self.getShapeNode(cache)
+        cmds.select(clear = True)
+        for shape in cmds.listConnections(node + '.outPolyMesh'):
+            cmds.select(shape, add = True)
+
+    def deleteMayaRefAbc(self, cache):
+        self.unlock()
+        node = self.getShapeNode(cache)
+        cmds.lockNode(node, lock = False)
+        cmds.file(rr = True, rfn = node)
+        xform = self.getXformNode(cache)
+        cmds.lockNode(xform, lock = False)
+        cmds.delete(xform)
+        self.deleteCache(cache, cleanNode = False)
+        self.lock()
+
+    def updateAttr(self, ver):
+        self.setVersion(ver)
+        self.setFilelink(ver)
 
     def setShapeNode(self, cache, node):
         self.unlock()
@@ -304,10 +398,11 @@ class VFXnode(object):
                 return attr
         return None
 
-    def deleteCache(self, cache):
+    def deleteCache(self, cache, cleanNode = True):
         self.unlock()
-        cmds.delete(self.getShapeNode(cache))
-        cmds.delete(self.getXformNode(cache))
+        if cleanNode == True:
+            cmds.delete(self.getShapeNode(cache))
+            cmds.delete(self.getXformNode(cache))
         '''
         for tag in self.__tags:
             attr = self.getTagAttr(cache, tag)
@@ -329,6 +424,65 @@ class VFXnode(object):
     def unlock(self):
         cmds.lockNode(self.__node, lock = False)
 
+#########
+
+class WarningDialog(QDialog):
+    def __init__(self, text, parent = None):
+        super(WarningDialog, self).__init__(parent)
+        self.initUI(text)
+    def initUI(self, text):
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(QLabel(text))
+        ok_bn = QPushButton('OK')
+        main_layout.addWidget(ok_bn)
+        self.setLayout(main_layout)
+
+        ok_bn.clicked.connect(self.bn)
+
+    def bn(self):
+        self.close()
+
+##########
+
+class AbcConfirm(QDialog):
+    def __init__(self, parent = None):
+        super(AbcConfirm, self).__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        main_layout = QVBoxLayout()
+        bn_layout = QHBoxLayout()
+
+        self.vray = QRadioButton('Vray Proxy')
+        self.maya = QRadioButton('Maya Ref')
+
+        ok_bn = QPushButton('OK')
+        cancel_bn = QPushButton('Cancel')
+
+        bn_layout.addWidget(ok_bn)
+        bn_layout.addWidget(cancel_bn)
+
+        main_layout.addWidget(self.vray)
+        main_layout.addWidget(self.maya)
+        main_layout.addLayout(bn_layout)
+
+        self.setLayout(main_layout)
+
+        cancel_bn.clicked.connect(self.cancel)
+        ok_bn.clicked.connect(self.ok)
+
+    def ok(self):
+        if self.vray.isChecked():
+            self.tag = 'vray'
+        elif self.maya.isChecked():
+            self.tag = 'maya'
+        else:
+            self.tag = None
+        self.accept()
+        self.cloed()
+
+    def cancel(self):
+        self.close()
 
 ########
 
