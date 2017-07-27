@@ -140,17 +140,19 @@ def update_cache(self, row):
 def delete_cache(self, row):
     cache = self.getCacheItem(row)
     vfx = VFXnode(getVFXnode())
-    if cache.fileType() == 'vdb':
-        vfx.deleteVrayVolumeGrid(cache)
-    elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'VrayProxy':
-        vfx.deleteVrayProxyAbc(cache)
-    elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'MayaRef':
-        vfx.deleteMayaRef(cache)
-    elif cache.fileType() in ['ma', 'mb']:
-        vfx.deleteMayaRef(cache)
+    dialog = DelConfirm(cache)
+    dialog.show()
+    if dialog.exec_():
+        if cache.fileType() == 'vdb':
+            vfx.deleteVrayVolumeGrid(cache)
+        elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'VrayProxy':
+            vfx.deleteVrayProxyAbc(cache)
+        elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'MayaRef':
+            vfx.deleteMayaRef(cache)
+        elif cache.fileType() in ['ma', 'mb']:
+            vfx.deleteMayaRef(cache)
 
     self.rowSettingForMaya(row, self.getVersionItem(row))
-
 
 
 setattr(cacheGUI.ViewWidget, 'rowSettingForMaya', maya_rowSetting)
@@ -493,6 +495,36 @@ class AbcConfirm(QDialog):
         self.close()
 
 ########
+
+class DelConfirm(QDialog):
+    def __init__(self, cache, parent = None):
+        super(DelConfirm, self).__init__(parent)
+        self.initUI(cache)
+
+    def initUI(self, cache):
+        main_layout = QVBoxLayout()
+        bn_layout = QHBoxLayout()
+
+        ok_bn = QPushButton('OK')
+        cancel_bn = QPushButton('Cancel')
+
+        bn_layout.addWidget(ok_bn)
+        bn_layout.addWidget(cancel_bn)
+        main_layout.addWidget(QLabel('Delete: ' + cache.name() + '?' ))
+        main_layout.addLayout(bn_layout)
+
+        self.setLayout(main_layout)
+
+        ok_bn.clicked.connect(lambda: self.final(1))
+        cancel_bn.clicked.connect(lambda: self.final(0))
+
+    def final(self, check):
+        if check == 1:
+            self.accept()
+        self.close()
+
+
+#######
 
 def walkNamespace(que, root = ':', target = 'VFX'):
     cmds.namespace(set = root)
