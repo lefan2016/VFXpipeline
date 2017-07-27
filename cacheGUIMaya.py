@@ -105,9 +105,13 @@ def import_cache(self, row):
         dialog.show()
         if dialog.exec_():
             if dialog.tag == 'maya':
-                VFXnode(getVFXnode()).createMayaRefAbc(ver)
+                VFXnode(getVFXnode()).createMayaRef(ver)
             elif dialog.tag == 'vray':
                 VFXnode(getVFXnode()).createVrayProxyAbc(ver)
+    elif cache.fileType() == 'ma':
+        VFXnode(getVFXnode()).createMayaRef(ver, refType = 'mayaAscii')
+    elif cache.fileType() == 'mb':
+        VFXnode(getVFXnode()).createMayaRef(ver, refType = 'mayaBinary')
 
     self.rowSettingForMaya(row, self.getVersionItem(row))
 
@@ -124,8 +128,13 @@ def update_cache(self, row):
         vfx.updateVrayVolumeGrid(ver)
     elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'VrayProxy':
         vfx.updateVrayProxyAbc(ver)
-    elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'MayaRefAbc':
-        vfx.updateMayaRefAbc(ver)
+    elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'MayaRef':
+        vfx.updateMayaRef(ver)
+    elif cache.fileType() == 'ma':
+        vfx.updateMayaRef(ver, refType = 'mayaAscii')
+    elif cache.fileType() == 'mb':
+        vfx.updateMayaRef(ver, refType = 'mayaBinary')
+
     self.rowSettingForMaya(row, self.getVersionItem(row))
 
 def delete_cache(self, row):
@@ -135,8 +144,11 @@ def delete_cache(self, row):
         vfx.deleteVrayVolumeGrid(cache)
     elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'VrayProxy':
         vfx.deleteVrayProxyAbc(cache)
-    elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'MayaRefAbc':
-        vfx.deleteMayaRefAbc(cache)
+    elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'MayaRef':
+        vfx.deleteMayaRef(cache)
+    elif cache.fileType() in ['ma', 'mb']:
+        vfx.deleteMayaRef(cache)
+
     self.rowSettingForMaya(row, self.getVersionItem(row))
 
 
@@ -232,16 +244,16 @@ class VFXnode(object):
         self.deleteCache(cache)
         self.lock()
 
-    def createMayaRefAbc(self, ver):
+    def createMayaRef(self, ver, refType = 'Alembic'):
         self.unlock()
         cache = ver.parent()
         name = self.compoundName(cache)
         print name
         shape_name = '_'.join([name, 'shape'])
         xform_name = '_'.join([name, 'xform'])
-        if ver.fileType() == 'abc':
+        if ver.fileType() in ['abc', 'ma', 'mb']:
             path = ver.path().replace('\\','/') + '/' + ver.linkname()
-            cmds.file(path, r = True, type = 'Alembic', gr = True, gn = xform_name, ignoreVersion = True, mergeNamespacesOnClash = False, namespace = ':')
+            cmds.file(path, r = True, type = refType, gr = True, gn = xform_name, ignoreVersion = True, mergeNamespacesOnClash = False, namespace = ':')
 
             shape = cmds.file(path, q = True, rfn = True)
             cmds.lockNode(shape, l = False)
@@ -250,18 +262,18 @@ class VFXnode(object):
             self.createAttr(cache)
             self.setShapeNode(cache, shape)
             self.setXformNode(cache, xform_name)
-            self.setWay(cache, 'MayaRefAbc')
-            self.updateMayaRefAbc(ver, initial = True)
+            self.setWay(cache, 'MayaRef')
+            self.updateMayaRef(ver, initial = True)
             
         self.lock()
 
-    def updateMayaRefAbc(self, ver, initial = False):
+    def updateMayaRef(self, ver, initial = False, refType = 'Alembic'):
         self.unlock()
         cache = ver.parent()
         node = self.getShapeNode(ver.parent())
         path = ver.path().replace('\\','/') + '/' + ver.linkname()
         if initial == False:
-            cmds.file(path, type = 'Alembic', loadReference = self.getShapeNode(cache))
+            cmds.file(path, type = refType, loadReference = self.getShapeNode(cache))
 
         xform = self.getXformNode(cache)
         cmds.lockNode(xform, lock = False)
@@ -272,17 +284,13 @@ class VFXnode(object):
         self.setFilelink(ver)
         self.lock()
 
-    def selectMayaRefAbc(self, cache):
-        node = self.getShapeNode(cache)
-        cmds.select(clear = True)
-        for shape in cmds.listConnections(node + '.outPolyMesh'):
-            cmds.select(shape, add = True)
-
-    def deleteMayaRefAbc(self, cache):
+    def deleteMayaRef(self, cache):
         self.unlock()
+        ver = cache.findVersion(self.getVersion(cache))
+        path = ver.path().replace('\\','/') + '/' + ver.linkname()
         node = self.getShapeNode(cache)
         cmds.lockNode(node, lock = False)
-        cmds.file(rr = True, rfn = node)
+        cmds.file(path, rr = True)
         xform = self.getXformNode(cache)
         cmds.lockNode(xform, lock = False)
         cmds.delete(xform)

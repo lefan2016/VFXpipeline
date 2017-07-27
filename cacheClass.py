@@ -82,7 +82,7 @@ class ProjectCahce(object):
 
 class CutCache(object):
     def __init__(self, cut, parent, que = None, mThread = 1):
-        self.__cacheFilter = [['abc', 'obj'],['vdb','prt']]
+        self.__cacheFilter = [['abc', 'obj', 'ma', 'mb'],['vdb','prt']]
         self.__parent = parent
         self.__cut = cut
         self.__mThread = mThread
