@@ -369,14 +369,12 @@ class CommentListWidget(QListWidget):
     def getItem(self):
         return self.__item
 
-
-
-
-if __name__ == '__main__':
+def view():
     cacheDrive = 'Q:'
     app = QApplication(sys.argv)
     mainWindow = MainWidget(cacheDrive = cacheDrive)
-
     mainWindow.show()
-
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    view()

@@ -175,21 +175,28 @@ class VFXnode(object):
         self.__tagTypes = ['message', 'message', 'string', 'string', 'string']
 
     def createVrayVolumeGrid(self, ver):
-        self.unlock()
-        cache = ver.parent()
-        name = self.compoundName(cache)
-        shape_name = '_'.join([name, 'shape'])
-        xform_name = '_'.join([name, 'xform'])
-        if cache.fileType() == 'vdb':
-            shape = cmds.createNode('VRayVolumeGrid', n = shape_name)
-            xform = cmds.listRelatives(shape, parent = True)
-            xform = cmds.rename(xform, xform_name)
-            self.createAttr(cache)
-            self.setShapeNode(cache, shape)
-            self.setXformNode(cache, xform)
-            self.setWay(cache, 'VolumeGrid')
-            self.updateVrayVolumeGrid(ver)
-        self.lock()
+        if 'vrayformaya' in cmds.pluginInfo(query=True, listPlugins=True):
+            self.unlock()
+            cache = ver.parent()
+            name = self.compoundName(cache)
+            shape_name = '_'.join([name, 'shape'])
+            xform_name = '_'.join([name, 'xform'])
+            if cache.fileType() == 'vdb':
+                shape = cmds.createNode('VRayVolumeGrid', n = shape_name)
+                xform = cmds.listRelatives(shape, parent = True)
+                xform = cmds.rename(xform, xform_name)
+                self.createAttr(cache)
+                self.setShapeNode(cache, shape)
+                self.setXformNode(cache, xform)
+                self.setWay(cache, 'VolumeGrid')
+                self.updateVrayVolumeGrid(ver)
+            self.lock()
+        else:
+            dialog = WarningDialog('No Vray!!')
+            dialog.show()
+            if dialog.exec_():
+                pass
+
 
     def updateVrayVolumeGrid(self, ver):
         self.unlock()
@@ -204,27 +211,33 @@ class VFXnode(object):
         self.deleteCache(cache)
 
     def createVrayProxyAbc(self, ver):
-        self.unlock()
-        cache = ver.parent()
-        name = self.compoundName(cache)
-        shape_name = '_'.join([name, 'shape'])
-        xform_name = '_'.join([name, 'xform'])
-        if cache.fileType() == 'abc':
-            path = ver.path().replace('\\','/') + '/' + ver.linkname()
-            mel.eval('vrayCreateProxy -node "' + xform_name + '" -dir "'+ path + '" -existing -createProxyNode;')
-            shape = cmds.ls(sl = True)[0]
-            shape = cmds.rename(shape, shape_name)
-            xform = cmds.listRelatives(shape, parent = True)
-            xform = cmds.rename(xform, xform_name)
-            self.createAttr(cache)
-            self.setShapeNode(cache, shape)
-            self.setXformNode(cache, xform)
-            self.setWay(cache, 'VrayProxy')
-            self.updateVrayProxyAbc(ver)
-            vraymesh = cmds.listConnections(self.getShapeNode(cache) + '.inMesh')[0]
-            cmds.setAttr(vraymesh + '.animType', 1)
-            cmds.setAttr(vraymesh + '.useAlembicOffset', 1)
-        self.lock()
+        if 'vrayformaya' in cmds.pluginInfo(query=True, listPlugins=True):
+            self.unlock()
+            cache = ver.parent()
+            name = self.compoundName(cache)
+            shape_name = '_'.join([name, 'shape'])
+            xform_name = '_'.join([name, 'xform'])
+            if cache.fileType() == 'abc':
+                path = ver.path().replace('\\','/') + '/' + ver.linkname()
+                mel.eval('vrayCreateProxy -node "' + xform_name + '" -dir "'+ path + '" -existing -createProxyNode;')
+                shape = cmds.ls(sl = True)[0]
+                shape = cmds.rename(shape, shape_name)
+                xform = cmds.listRelatives(shape, parent = True)
+                xform = cmds.rename(xform, xform_name)
+                self.createAttr(cache)
+                self.setShapeNode(cache, shape)
+                self.setXformNode(cache, xform)
+                self.setWay(cache, 'VrayProxy')
+                self.updateVrayProxyAbc(ver)
+                vraymesh = cmds.listConnections(self.getShapeNode(cache) + '.inMesh')[0]
+                cmds.setAttr(vraymesh + '.animType', 1)
+                cmds.setAttr(vraymesh + '.useAlembicOffset', 1)
+            self.lock()
+        else:
+            dialog = WarningDialog('No Vray!!')
+            dialog.show()
+            if dialog.exec_():
+                pass
 
     def updateVrayProxyAbc(self, ver):
         self.unlock()
@@ -590,14 +603,3 @@ def view(cacheDrive = 'Q:'):
     mainWidget = cacheGUI.MainWidget(cacheDrive = cacheDrive)
     mainWidget.show()
 
-def notMaya_view():
-    cacheDrive = 'Q:'
-    app = QApplication(sys.argv)
-    mainWindow = cacheGUI.MainWidget(cacheDrive = cacheDrive)
-
-    mainWindow.show()
-
-    sys.exit(app.exec_())   
-
-if __name__ == '__main__':
-    notMaya_view()
