@@ -232,14 +232,16 @@ class Version(object):
         self.__endFrame = 0
         self.__padding = 0
         self.__check = True
-        if self.__mThread == 1:
-            que.put(self)
-
+        
         self.findFile()
         self.__msg = MSG(os.path.join(self.path(), 'msg'))
 
+        if self.__mThread == 1:
+            que.put(self)
+
         if not os.path.exists(self.previewPath()) or not os.path.isdir(self.previewPath()):
             os.mkdir(self.previewPath())
+
 
     def name(self):
         return self.__version
@@ -380,7 +382,9 @@ class MSG(object):
             self.path = path
         else:
             with open(path, 'w') as file:
-                json.dump({'Comments' : [None]}, file)
+                data = {'Comments': [None]}
+                json.dump(data, file)
+                self.path = path
 
     def eraseAll(self):
         with open(self.path, 'w') as file:
@@ -388,7 +392,11 @@ class MSG(object):
 
     def getContent(self):
         with open(self.path, 'r') as file:
-            return json.load(file)
+            data = json.load(file)
+            if data == None:
+                return {}
+            else:
+                return data
 
     def getComments(self):
         return self.getContent()['Comments']
