@@ -140,19 +140,25 @@ def update_cache(self, row):
 def delete_cache(self, row):
     cache = self.getCacheItem(row)
     vfx = VFXnode(getVFXnode())
-    dialog = DelConfirm(cache)
-    dialog.show()
-    if dialog.exec_():
-        if cache.fileType() == 'vdb':
-            vfx.deleteVrayVolumeGrid(cache)
-        elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'VrayProxy':
-            vfx.deleteVrayProxyAbc(cache)
-        elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'MayaRef':
-            vfx.deleteMayaRef(cache)
-        elif cache.fileType() in ['ma', 'mb']:
-            vfx.deleteMayaRef(cache)
+    if cmds.referenceQuery(vfx.getShapeNode(cache), inr = True) == False:
+        dialog = DelConfirm(cache)
+        dialog.show()
+        if dialog.exec_():
+            if cache.fileType() == 'vdb':
+                vfx.deleteVrayVolumeGrid(cache)
+            elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'VrayProxy':
+                vfx.deleteVrayProxyAbc(cache)
+            elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'MayaRef':
+                vfx.deleteMayaRef(cache)
+            elif cache.fileType() in ['ma', 'mb']:
+                vfx.deleteMayaRef(cache)
 
-    self.rowSettingForMaya(row, self.getVersionItem(row))
+        self.rowSettingForMaya(row, self.getVersionItem(row))
+    else:
+        dialog = WarningDialog('Can Not Delete Node in Reference File!!')
+        dialog.show()
+        if dialog.exec_():
+            pass
 
 
 setattr(cacheGUI.ViewWidget, 'rowSettingForMaya', maya_rowSetting)
@@ -439,7 +445,7 @@ class VFXnode(object):
         return name
 
     def getNamespace(self):
-    	return ':'.join(self.__node.split(':')[:-1])
+        return ':'.join(self.__node.split(':')[:-1])
 
     def lock(self):
         cmds.lockNode(self.__node)
