@@ -115,6 +115,11 @@ def import_cache(self, row):
         VFXnode(getVFXnode()).createMayaRef(ver, refType = 'mayaAscii')
     elif cache.fileType() == 'mb':
         VFXnode(getVFXnode()).createMayaRef(ver, refType = 'mayaBinary')
+    elif cache.fileType() == 'prt':
+        dialog = WarningDialog('No Krakatoa!!')
+        dialog.show()
+        if dialog.exec_():
+            pass
 
     self.rowSettingForMaya(row, self.getVersionItem(row))
 
