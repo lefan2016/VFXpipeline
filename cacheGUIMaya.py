@@ -269,12 +269,11 @@ class VFXnode(object):
         self.unlock()
         cache = ver.parent()
         name = self.compoundName(cache)
-        print name
         shape_name = '_'.join([name, 'shape'])
         xform_name = '_'.join([name, 'xform'])
         if ver.fileType() in ['abc', 'ma', 'mb']:
             path = ver.path().replace('\\','/') + '/' + ver.linkname()
-            cmds.file(path, r = True, type = refType, gr = True, gn = xform_name, ignoreVersion = True, mergeNamespacesOnClash = False, namespace = ':')
+            cmds.file(path, r = True, type = refType, gr = True, gn = xform_name, ignoreVersion = True, mergeNamespacesOnClash = False, namespace = name)
 
             shape = cmds.file(path, q = True, rfn = True)
             cmds.lockNode(shape, l = False)
