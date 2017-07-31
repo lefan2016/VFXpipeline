@@ -3,6 +3,8 @@ import cacheClass as cc
 from PySide.QtCore import *
 from PySide.QtGui import *
 
+reload(cc)
+
 class MainWidget(QWidget):
     def __init__(self, cacheDrive = 'Q:', parent = None, projRegex = '^\d{6}\w+'):
         super(MainWidget, self).__init__(parent)
@@ -298,7 +300,6 @@ class ScaleDialog(QDialog):
             self.accept()
         else:
             self.close()
-
 
 
 #################

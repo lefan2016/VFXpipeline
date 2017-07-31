@@ -101,13 +101,16 @@ def import_cache(self, row):
     if cache.fileType() == 'vdb':
         VFXnode(getVFXnode()).createVrayVolumeGrid(ver)
     elif cache.fileType() == 'abc':
-        dialog = AbcConfirm()
-        dialog.show()
-        if dialog.exec_():
-            if dialog.tag == 'maya':
-                VFXnode(getVFXnode()).createMayaRef(ver)
-            elif dialog.tag == 'vray':
-                VFXnode(getVFXnode()).createVrayProxyAbc(ver)
+        if ver.seqFlag() != 'SEQ':
+            dialog = AbcConfirm()
+            dialog.show()
+            if dialog.exec_():
+                if dialog.tag == 'maya':
+                    VFXnode(getVFXnode()).createMayaRef(ver)
+                elif dialog.tag == 'vray':
+                    VFXnode(getVFXnode()).createVrayProxyAbc(ver)
+        else:
+            VFXnode(getVFXnode()).createVrayProxyAbc(ver)
     elif cache.fileType() == 'ma':
         VFXnode(getVFXnode()).createMayaRef(ver, refType = 'mayaAscii')
     elif cache.fileType() == 'mb':
@@ -224,7 +227,11 @@ class VFXnode(object):
             shape_name = '_'.join([name, 'shape'])
             xform_name = '_'.join([name, 'xform'])
             if cache.fileType() == 'abc':
-                path = ver.path().replace('\\','/') + '/' + ver.linkname()
+                path = ''
+                if ver.seqFlag() == 'SEQ':
+                    path = ver.path().replace('\\','/') + '/' + ver.filename() + '.<frame0' + str(ver.padding()) + '>.' + ver.fileType()
+                else:
+                    path = ver.path().replace('\\','/') + '/' + ver.linkname()
                 mel.eval('vrayCreateProxy -node "' + xform_name + '" -dir "'+ path + '" -existing -createProxyNode;')
                 shape = cmds.ls(sl = True)[0]
                 shape = cmds.rename(shape, shape_name)
@@ -251,7 +258,11 @@ class VFXnode(object):
         self.setFilelink(ver)
         self.setScale(ver)
         vraymesh = cmds.listConnections(self.getShapeNode(ver.parent()) + '.inMesh')[0]
-        path = ver.path().replace('\\','/') + '/' + ver.linkname()
+        path = ''
+        if ver.seqFlag() == 'SEQ':
+            path = ver.path().replace('\\','/') + '/' + ver.filename() + '.<frame0' + str(ver.padding()) + '>.' + ver.fileType()
+        else:
+            path = ver.path().replace('\\','/') + '/' + ver.linkname()
         cmds.setAttr(vraymesh + '.fileName2', path, type = 'string' )
         self.lock()
 
@@ -268,6 +279,7 @@ class VFXnode(object):
     def createMayaRef(self, ver, refType = 'Alembic'):
         self.unlock()
         cache = ver.parent()
+
         name = self.compoundName(cache)
         shape_name = '_'.join([name, 'shape'])
         xform_name = '_'.join([name, 'xform'])
@@ -289,19 +301,25 @@ class VFXnode(object):
 
     def updateMayaRef(self, ver, initial = False, refType = 'Alembic'):
         self.unlock()
-        cache = ver.parent()
-        node = self.getShapeNode(ver.parent())
-        path = ver.path().replace('\\','/') + '/' + ver.linkname()
-        if initial == False:
-            cmds.file(path, type = refType, loadReference = self.getShapeNode(cache))
+        if ver.seqFlag() == 'SEQ':
+            dialog = WarningDialog('Maya Ref Can Not Load Seq!!')
+            dialog.show()
+            if dialog.exec_():
+                pass
+        else:
+            cache = ver.parent()
+            node = self.getShapeNode(ver.parent())
+            path = ver.path().replace('\\','/') + '/' + ver.linkname()
+            if initial == False:
+                cmds.file(path, type = refType, loadReference = self.getShapeNode(cache))
 
-        xform = self.getXformNode(cache)
-        cmds.lockNode(xform, lock = False)
-        self.setScale(ver)
-        cmds.lockNode(xform)
+            xform = self.getXformNode(cache)
+            cmds.lockNode(xform, lock = False)
+            self.setScale(ver)
+            cmds.lockNode(xform)
 
-        self.setVersion(ver)
-        self.setFilelink(ver)
+            self.setVersion(ver)
+            self.setFilelink(ver)
         self.lock()
 
     def deleteMayaRef(self, cache):
@@ -507,7 +525,7 @@ class AbcConfirm(QDialog):
         else:
             self.tag = None
         self.accept()
-        self.cloed()
+        self.close()
 
     def cancel(self):
         self.close()

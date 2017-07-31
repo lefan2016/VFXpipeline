@@ -232,6 +232,7 @@ class Version(object):
         self.__endFrame = 0
         self.__padding = 0
         self.__check = True
+        self.__confirmSeq()
         
         self.findFile()
         self.__msg = MSG(os.path.join(self.path(), 'msg'))
@@ -241,7 +242,6 @@ class Version(object):
 
         if not os.path.exists(self.previewPath()) or not os.path.isdir(self.previewPath()):
             os.mkdir(self.previewPath())
-
 
     def name(self):
         return self.__version
@@ -372,6 +372,17 @@ class Version(object):
         else:
             return None
 
+    def __confirmSeq(self):
+        filenames = []
+        for (dirpath, dirname, files) in os.walk(self.path()):
+            for file in files:
+                if file.endswith('.' + self.parent().fileType()):
+                    filenames.append(file)
+        if len(filenames) > 1:
+            self.__seq_flag = 1
+        else:
+            self.__seq_flag = 0
+
     def flag(self):
         return 'VERSION'
 
@@ -473,7 +484,7 @@ if __name__ == '__main__':
     
     col = collect(a, 'VERSION')
     for i,c in enumerate(col):
-
-        print i, c.parent().name() + '==' + c.linkname()
+        if c.seqFlag() == 'SEQ':
+            print i, c.parent().name() + '==' + c.linkname()
     
     
