@@ -1,4 +1,5 @@
-import os, re, time
+# -*- coding: utf-8 -*-
+import os, re, time, io
 import threading, Queue
 import json
 
@@ -392,17 +393,17 @@ class MSG(object):
         if os.path.exists(path) and os.path.isfile(path):
             self.path = path
         else:
-            with open(path, 'w') as file:
+            with io.open(path, 'w', encoding = 'utf-8') as file:
                 data = {'Comments': [None]}
-                json.dump(data, file)
+                file.write(unicode(json.dumps(data, ensure_ascii = False)))
                 self.path = path
 
     def eraseAll(self):
-        with open(self.path, 'w') as file:
-            json.dump({'Comments' : [None]}, file)
+        with io.open(self.path, 'w', encoding = 'utf-8') as file:
+            file.write(unicode(json.dumps(data, ensure_ascii = False)))
 
     def getContent(self):
-        with open(self.path, 'r') as file:
+        with io.open(self.path, 'r', encoding = 'utf-8') as file:
             data = json.load(file)
             if data == None:
                 return {}
@@ -413,11 +414,11 @@ class MSG(object):
         return self.getContent()['Comments']
 
     def sendComment(self, comment):
-        if type(comment) is str and comment != '':
+        if comment != '':
             content = self.getContent()
             content['Comments'].append([comment, os.environ['COMPUTERNAME'], time.asctime(time.localtime(time.time()))])
-            with open(self.path, 'w') as file:
-                json.dump(content, file)
+            with io.open(self.path, 'w', encoding = 'utf-8') as file:
+                file.write(unicode(json.dumps(content, ensure_ascii = False)))
 
     def getPostAdjust(self):
         if 'postAdjust' in self.getContent().keys():
@@ -443,12 +444,12 @@ class MSG(object):
             content = self.getContent()
             if postAdjust not in content.keys():
                 content[postAdjust] = {}
-                with open(self.path, 'w') as file:
-                    json.dump(content, file)
+                with io.open(self.path, 'w', encoding = 'utf-8') as file:
+                    file.write(unicode(json.dumps(content, ensure_ascii = False)))
             content = self.getContent()
             content[postAdjust]['scale'] = xyz
-            with open(self.path, 'w') as file:
-                    json.dump(content, file)
+            with io.open(self.path, 'w', encoding = 'utf-8') as file:
+                    file.write(unicode(json.dumps(content, ensure_ascii = False)))
 
 
 

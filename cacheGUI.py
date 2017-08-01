@@ -1,4 +1,5 @@
-import os, re, sys, subprocess
+# -*- coding: utf-8 -*-
+import os, re, sys, subprocess, io
 import cacheClass as cc
 from PySide.QtCore import *
 from PySide.QtGui import *
@@ -357,14 +358,14 @@ class CommentListWidget(QListWidget):
         pointer = 0
         for comment in self.__item.msg().getComments():
             if comment != None:
-                self.addItem(str(comment[0]))
+                self.addItem(comment[0])
                 widgetItem = self.item(pointer)
                 widgetItem.setToolTip(' / '.join([comment[1], comment[2]]))
                 pointer += 1
         self.scrollToItem(self.item(pointer - 1))
 
     def sendComment(self, comment):
-        self.getItem().msg().sendComment(str(comment))
+        self.getItem().msg().sendComment(comment)
         self.refresh(self.getItem())
 
     def getItem(self):
