@@ -21,7 +21,12 @@ class MainWidget(QWidget):
         self.resize(860,720)
 
         self.view_widget = ViewWidget(item = self.cutItem, parent = self)
+        path_hlayout = QHBoxLayout()
         self.path_lineEdit = QLineEdit()
+        self.path_lineEdit.setReadOnly(True)
+        self.open_path_bn = QPushButton('Open')
+        path_hlayout.addWidget(self.path_lineEdit)
+        path_hlayout.addWidget(self.open_path_bn)
 
         top_hlayout = QHBoxLayout()
         main_vlayout = QVBoxLayout()
@@ -68,12 +73,13 @@ class MainWidget(QWidget):
         self.splitter.addWidget(self.ver_comment_widget)
 
         main_vlayout.addWidget(self.splitter)
-        main_vlayout.addWidget(self.path_lineEdit)
+        main_vlayout.addLayout(path_hlayout)
 
         self.setLayout(main_vlayout)
 
         self.projects_cb.currentIndexChanged.connect(self.pick_project)
         self.cuts_cb.currentIndexChanged.connect(self.pick_cut)
+        self.open_path_bn.clicked.connect(self.open_path)
 
         self.connect(self.view_widget, SIGNAL("itemClicked (QTableWidgetItem*)"), self.selectCache) 
 
@@ -90,13 +96,15 @@ class MainWidget(QWidget):
             self.view_widget.cutChange(self.cutItem)
         else:
             self.cutItem = None
-
+        self.path_lineEdit.setText('')
+        
     def refresh_cuts_cb(self):
         self.cuts_cb.clear()
         cuts = []
         for cut in cc.collect(self.projectItem, 'CUT'):
             cuts += [cut.name()]
         self.cuts_cb.addItems(cuts)
+
 
     def selectCache(self, item):
         row = item.row()
@@ -105,6 +113,15 @@ class MainWidget(QWidget):
         self.path_lineEdit.setText(versionItem.path())
         self.cache_comment_widget.listWidget.refresh(cacheItem)
         self.ver_comment_widget.listWidget.refresh(versionItem)
+
+    def open_path(self):
+        row = self.view_widget.currentRow()
+        try:
+            versionItem = self.view_widget.getVersionItem(row)
+            subprocess.call("explorer " + versionItem.path(), shell=True)      
+        except:
+            pass
+
 
 
 ############
