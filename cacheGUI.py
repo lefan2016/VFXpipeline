@@ -60,14 +60,15 @@ class MainWidget(QWidget):
         label.setFixedWidth(30)
         top_hlayout.addWidget(label)
         top_hlayout.addWidget(self.cuts_cb)
+        
         main_vlayout.addLayout(top_hlayout)
 
         self.splitter.addWidget(self.view_widget)
-        #self.splitter.addWidget(self.path_lineEdit)
         self.splitter.addWidget(self.cache_comment_widget)
         self.splitter.addWidget(self.ver_comment_widget)
 
         main_vlayout.addWidget(self.splitter)
+        main_vlayout.addWidget(self.path_lineEdit)
 
         self.setLayout(main_vlayout)
 
