@@ -213,6 +213,7 @@ class ViewWidget(QTableWidget):
         self.selectRow(row)
         self.__parent.cache_comment_widget.listWidget.refresh(self.getCacheItem(row))
         self.__parent.ver_comment_widget.listWidget.refresh(self.getVersionItem(row))
+        self.__parent.path_lineEdit.setText(version.path())
 
     def setScale(self, row):
         ver = self.getVersionItem(row)
@@ -244,7 +245,10 @@ class ViewWidget(QTableWidget):
             self.preview_mapper.setMapping(preview_bn, row)
 
         if self.SEQ_CB_F in self.header:
-            self.setItem(row, self.header.index(self.SEQ_CB_F), QTableWidgetItem('V' if version.seqFlag() == 'SEQ' else 'X'))
+            if version.check() == True:
+                self.setItem(row, self.header.index(self.SEQ_CB_F), QTableWidgetItem('V' if version.seqFlag() == 'SEQ' else 'X'))
+            else:
+                self.setItem(row, self.header.index(self.SEQ_CB_F), QTableWidgetItem('Error'))
 
         if self.POST_SCALE_F in self.header:
             scale = version.getScale()

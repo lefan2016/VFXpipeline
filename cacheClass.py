@@ -488,7 +488,7 @@ def collect(item, flag):
 
 if __name__ == '__main__':
 
-    a = ProjectCahce(mThread = 1, cacheDrive = 'Q:', project = '201707_AcerLiquidLoop')
+    a = ProjectCahce(mThread = 1, cacheDrive = 'Q:', project = '201707_AcerNitro5')
     print a.exists()
     print a.name()
     print a.path()
