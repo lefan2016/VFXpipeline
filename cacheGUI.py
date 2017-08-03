@@ -21,6 +21,7 @@ class MainWidget(QWidget):
         self.resize(860,720)
 
         self.view_widget = ViewWidget(item = self.cutItem, parent = self)
+        self.path_lineEdit = QLineEdit()
 
         top_hlayout = QHBoxLayout()
         main_vlayout = QVBoxLayout()
@@ -62,6 +63,7 @@ class MainWidget(QWidget):
         main_vlayout.addLayout(top_hlayout)
 
         self.splitter.addWidget(self.view_widget)
+        #self.splitter.addWidget(self.path_lineEdit)
         self.splitter.addWidget(self.cache_comment_widget)
         self.splitter.addWidget(self.ver_comment_widget)
 
@@ -99,8 +101,10 @@ class MainWidget(QWidget):
         row = item.row()
         cacheItem = self.view_widget.getCacheItem(row)
         versionItem = self.view_widget.getVersionItem(row)
+        self.path_lineEdit.setText(versionItem.path())
         self.cache_comment_widget.listWidget.refresh(cacheItem)
         self.ver_comment_widget.listWidget.refresh(versionItem)
+
 
 ############
 
@@ -326,7 +330,7 @@ class CommentWidget(QWidget):
         send_hlayout.addWidget(self.lineEdit)
         send_hlayout.addWidget(self.comment_send_bn)
         read_hlayout.addWidget(self.comment_read_bn)
-        
+         
         main_layout.addLayout(send_hlayout)
         main_layout.addLayout(read_hlayout)
         self.setLayout(main_layout)

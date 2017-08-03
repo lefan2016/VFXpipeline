@@ -392,6 +392,16 @@ class MSG(object):
         self.path = None
         if os.path.exists(path) and os.path.isfile(path):
             self.path = path
+            '''
+            with io.open(self.path, 'r', encoding = 'utf-8') as file:
+                data = file.read()
+                if data == '':
+                    file.close()
+                    with io.open(self.path, 'w', encoding = 'utf-8') as file2:
+                        data = {'Comments': [None]}
+                        file2.write(unicode(json.dumps(data, ensure_ascii = False)))
+            '''
+
         else:
             with io.open(path, 'w', encoding = 'utf-8') as file:
                 data = {'Comments': [None]}
@@ -429,7 +439,11 @@ class MSG(object):
     def getScale(self):
         if self.getPostAdjust() != None:
             if 'scale' in self.getPostAdjust().keys():
-                return self.getPostAdjust()['scale']
+                scale_value = self.getPostAdjust()['scale']
+                if type(scale_value) is list:
+                    return scale_value
+                else:
+                    pass
             else:
                 return (1,1,1)
 
@@ -474,18 +488,17 @@ def collect(item, flag):
 
 if __name__ == '__main__':
 
-    a = ProjectCahce(mThread = 1, cacheDrive = 'Q:', project = '201706_FuriousWings')
+    a = ProjectCahce(mThread = 1, cacheDrive = 'Q:', project = '201707_AcerLiquidLoop')
     print a.exists()
     print a.name()
     print a.path()
     print a.cuts()[0].path()
     print a.cuts()[0].children()[0].path()
 
-
+    print '==== Check ===='
     
     col = collect(a, 'VERSION')
     for i,c in enumerate(col):
-        if c.seqFlag() == 'SEQ':
-            print i, c.parent().name() + '==' + c.linkname()
-    
+        if c.check() == False:
+            print c.path()    
     
