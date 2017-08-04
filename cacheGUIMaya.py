@@ -12,6 +12,14 @@ except ImportError:
 import maya.cmds as cmds
 import maya.mel as mel
 
+def mainWiget_maya_init(self):
+    project_path = cmds.workspace(q = True, rd = True)
+    project = project_path.split('/')[1]
+    index = self.projects_cb.findText(project, Qt.MatchFixedString)
+    if index >= 0:
+        self.projects_cb.setCurrentIndex(index)
+
+
 def maya_initHead(self):
     self.M_INMAYA_F = 'in Maya'
     self.M_UPDATE_F = 'Update'
@@ -174,6 +182,7 @@ def delete_cache(self, row):
         if dialog.exec_():
             pass
 
+setattr(cacheGUI.MainWidget, 'maya_init', mainWiget_maya_init)
 
 setattr(cacheGUI.ViewWidget, 'rowSettingForMaya', maya_rowSetting)
 setattr(cacheGUI.ViewWidget, 'initHeadForMaya', maya_initHead)

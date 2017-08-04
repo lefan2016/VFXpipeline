@@ -86,7 +86,11 @@ class MainWidget(QWidget):
         self.cuts_cb.currentIndexChanged.connect(self.pick_cut)
         self.open_path_bn.clicked.connect(self.open_path)
 
-        self.connect(self.view_widget, SIGNAL("itemClicked (QTableWidgetItem*)"), self.selectCache) 
+        self.connect(self.view_widget, SIGNAL("itemClicked (QTableWidgetItem*)"), self.selectCache)
+        self.maya_init()
+
+    def maya_init(self):
+        pass
 
     def pick_project(self):
         self.projectItem  = cc.ProjectCahce(cacheDrive = self.__cacheDrive, project = self.projects_cb.currentText())
