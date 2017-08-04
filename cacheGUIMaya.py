@@ -1,8 +1,14 @@
 import cacheGUI, sys, Queue, re
 from maya import OpenMayaUI as omui
-from shiboken import wrapInstance
-from PySide.QtGui import *
-from PySide.QtCore import *
+try:
+    from PySide2.QtCore import * 
+    from PySide2.QtGui import * 
+    from PySide2.QtWidgets import *
+    from shiboken2 import wrapInstance
+except ImportError:
+    from PySide.QtCore import *
+    from PySide.QtGui import *
+    from shiboken import wrapInstance
 import maya.cmds as cmds
 import maya.mel as mel
 
