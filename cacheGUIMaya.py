@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import cacheGUI, sys, Queue, re
 from maya import OpenMayaUI as omui
 try:

@@ -29,7 +29,7 @@ class MainWidget(QWidget):
         path_hlayout = QHBoxLayout()
         self.path_lineEdit = QLineEdit()
         self.path_lineEdit.setReadOnly(True)
-        self.open_path_bn = QPushButton('Open')
+        self.open_path_bn = QPushButton('Open Folder')
         path_hlayout.addWidget(self.path_lineEdit)
         path_hlayout.addWidget(self.open_path_bn)
 
@@ -91,7 +91,7 @@ class MainWidget(QWidget):
 
     def maya_init(self):
         pass
-
+        
     def pick_project(self):
         self.projectItem  = cc.ProjectCahce(cacheDrive = self.__cacheDrive, project = self.projects_cb.currentText())
         self.refresh_cuts_cb()
@@ -102,6 +102,7 @@ class MainWidget(QWidget):
         if cut != '':
             cuts = [x for x in self.projectItem.children() if x.name() == cut ]
             self.cutItem = cuts[0]
+            self.cutItem.read()
             self.view_widget.cutChange(self.cutItem)
         else:
             self.cutItem = None
@@ -110,7 +111,7 @@ class MainWidget(QWidget):
     def refresh_cuts_cb(self):
         self.cuts_cb.clear()
         cuts = []
-        for cut in cc.collect(self.projectItem, 'CUT'):
+        for cut in self.projectItem.children():
             cuts += [cut.name()]
         self.cuts_cb.addItems(cuts)
 
@@ -119,7 +120,7 @@ class MainWidget(QWidget):
         row = item.row()
         cacheItem = self.view_widget.getCacheItem(row)
         versionItem = self.view_widget.getVersionItem(row)
-        self.path_lineEdit.setText(versionItem.path())
+        self.path_lineEdit_display(versionItem)
         self.cache_comment_widget.listWidget.refresh(cacheItem)
         self.ver_comment_widget.listWidget.refresh(versionItem)
 
@@ -131,6 +132,13 @@ class MainWidget(QWidget):
         except:
             pass
 
+    def path_lineEdit_display(self, version):
+        if version.check() == False:
+            self.path_lineEdit.setText('Error')
+        elif version.checkSeq() == True:
+            self.path_lineEdit.setText(version.path() + '\\' + version.filename() + '.' + '#'*version.padding() + '.' + version.fileType())
+        elif version.checkSeq() == False:
+            self.path_lineEdit.setText(version.path() + '\\' + version.filename() + '.' + version.fileType())
 
 
 ############
@@ -222,7 +230,7 @@ class ViewWidget(QTableWidget):
         self.selectRow(row)
         self.__parent.cache_comment_widget.listWidget.refresh(self.getCacheItem(row))
         self.__parent.ver_comment_widget.listWidget.refresh(self.getVersionItem(row))
-        self.__parent.path_lineEdit.setText(version.path())
+        self.__parent.path_lineEdit_display(version)
 
     def setScale(self, row):
         ver = self.getVersionItem(row)

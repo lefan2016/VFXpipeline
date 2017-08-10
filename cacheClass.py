@@ -89,7 +89,7 @@ class CutCache(object):
         self.__mThread = mThread
         if self.__mThread == 1:
             que.put(self)
-        self.read()
+        #self.read()
 
     def read(self):
         self.__caches = []
