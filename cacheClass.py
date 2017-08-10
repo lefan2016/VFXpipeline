@@ -115,7 +115,9 @@ class CutCache(object):
             for th in ths:
                 th.join()
             while not que.empty():
-                self.__caches.append(que.get())
+                cache = que.get()
+                if len(cache.children()) != 0:
+                    self.__caches.append(cache)
 
         self.__caches = sorted(self.__caches, key = lambda x: x.name())
 
