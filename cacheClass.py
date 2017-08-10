@@ -268,7 +268,7 @@ class Version(object):
                 if file.endswith('.' + self.parent().fileType()):
                     filenames.append(file)
                     curtime =  os.path.getmtime(os.path.join(dirpath, file))
-                    mtime = mtime if mtime > curtime else curtime
+                    mtime = max(mtime, curtime)
         self.__mtime = mtime
 
         filenames = list(set([x.split('.')[0] for x in filenames]))
