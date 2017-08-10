@@ -269,7 +269,7 @@ class ViewWidget(QTableWidget):
                 self.setItem(row, self.header.index(self.SEQ_CB_F), QTableWidgetItem('Error'))
 
         if self.MTIME_F in self.header:
-            mtime = version.getmtime(simple = True)
+            mtime = ' ' + version.getmtime(simple = True) + ' '
             self.setItem(row, self.header.index(self.MTIME_F), QTableWidgetItem(mtime))
 
         if self.POST_SCALE_F in self.header:
