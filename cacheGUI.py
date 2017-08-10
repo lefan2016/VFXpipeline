@@ -174,7 +174,8 @@ class ViewWidget(QTableWidget):
         self.SEQ_CB_F = 'Sequence'
         self.POST_SCALE_F = 'Post Scale'
         self.SET_SCALE_F = 'Set Scale'
-        self.header = [self.USER_F, self.CACHE_NAME_F, self.VERSION_F, self.TYPE_F, self.SEQ_CB_F, self.START_F, self.END_F, self.POST_SCALE_F, self.SET_SCALE_F, self.PREVIEW_B_F]
+        self.MTIME_F = 'Last Modified'
+        self.header = [self.USER_F, self.CACHE_NAME_F, self.VERSION_F, self.TYPE_F, self.SEQ_CB_F, self.START_F, self.END_F, self.MTIME_F, self.POST_SCALE_F, self.SET_SCALE_F, self.PREVIEW_B_F]
         self.initHeadForMaya()
 
     def initHeadForMaya(self):
@@ -266,6 +267,10 @@ class ViewWidget(QTableWidget):
                 self.setItem(row, self.header.index(self.SEQ_CB_F), QTableWidgetItem('V' if version.seqFlag() == 'SEQ' else 'X'))
             else:
                 self.setItem(row, self.header.index(self.SEQ_CB_F), QTableWidgetItem('Error'))
+
+        if self.MTIME_F in self.header:
+            mtime = version.getmtime(simple = True)
+            self.setItem(row, self.header.index(self.MTIME_F), QTableWidgetItem(mtime))
 
         if self.POST_SCALE_F in self.header:
             scale = version.getScale()

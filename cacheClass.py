@@ -4,7 +4,7 @@ import threading, Queue
 import json
 
 class ProjectCahce(object):
-    def __init__(self, project, cacheDrive = 'Q:', projRegex = '^\d{6}\w+', cutRegex = '^\C', mThread = True):
+    def __init__(self, project, cacheDrive = 'Q:', projRegex = '^\d{6}\w+', cutRegex = '^\C', mThread = True, catchAll = False):
         self.__cut_regex = re.compile(cutRegex)
         project_regex = re.compile(projRegex)
         self.__cacheDrive = cacheDrive
@@ -16,7 +16,7 @@ class ProjectCahce(object):
             if os.path.exists(path) and os.path.isdir(path):
                 self.__cacheDrive = cacheDrive
                 self.__project = project
-                self.read()
+                self.read(catchAll = catchAll)
 
     def exists(self):
         path = os.path.join(self.__cacheDrive + '\\', self.__project)
@@ -25,7 +25,7 @@ class ProjectCahce(object):
         else:
             return False
 
-    def read(self):
+    def read(self, catchAll = False):
         self.__cuts = []
         path = os.path.join(self.path())
 
@@ -34,7 +34,7 @@ class ProjectCahce(object):
             que = Queue.Queue()
             for ele in os.listdir(path):
                 if self.__cut_regex.match(ele):
-                    th = threading.Thread(target = CutCache, kwargs = {'cut' : ele, 'parent' : self, 'que' : que})
+                    th = threading.Thread(target = CutCache, kwargs = {'cut' : ele, 'parent' : self, 'que' : que, 'catchAll' : catchAll})
                     #self.__cuts.append(CutCache(cut = ele, parent = self))
                     th.start()
                     ths.append(th)
@@ -47,7 +47,7 @@ class ProjectCahce(object):
         else:
             for ele in os.listdir(path):
                 if self.__cut_regex.match(ele):
-                    self.__cuts.append(CutCache(cut = ele, parent = self, mThread = 0))
+                    self.__cuts.append(CutCache(cut = ele, parent = self, mThread = 0, catchAll = catchAll))
         
         self.__cuts = sorted(self.__cuts, key = lambda x: x.name())
 
@@ -82,14 +82,15 @@ class ProjectCahce(object):
 
 
 class CutCache(object):
-    def __init__(self, cut, parent, que = None, mThread = 1):
+    def __init__(self, cut, parent, que = None, mThread = 1, catchAll = False):
         self.__cacheFilter = [['abc', 'obj', 'ma', 'mb'],['vdb','prt']]
         self.__parent = parent
         self.__cut = cut
         self.__mThread = mThread
         if self.__mThread == 1:
             que.put(self)
-        #self.read()
+        if catchAll == True:
+            self.read()
 
     def read(self):
         self.__caches = []
@@ -235,6 +236,7 @@ class Version(object):
         self.__endFrame = 0
         self.__padding = 0
         self.__check = True
+        self.__mtime = 0
         self.__confirmSeq()
         
         self.findFile()
@@ -260,10 +262,14 @@ class Version(object):
 
     def findFile(self):
         filenames = []
+        mtime = 0
         for (dirpath, dirname, files) in os.walk(os.path.join(self.parent().path(), self.name())):
             for file in files:
                 if file.endswith('.' + self.parent().fileType()):
                     filenames.append(file)
+                    curtime =  os.path.getmtime(os.path.join(dirpath, file))
+                    mtime = mtime if mtime > curtime else curtime
+        self.__mtime = mtime
 
         filenames = list(set([x.split('.')[0] for x in filenames]))
 
@@ -386,6 +392,14 @@ class Version(object):
         else:
             self.__seq_flag = 0
 
+    def getmtime(self, asc = False, simple = False):
+        if asc == True:
+            return time.asctime(time.localtime(self.__mtime))
+        elif simple == True:
+            return time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(self.__mtime))
+        else:
+            return self.__mtime
+
     def flag(self):
         return 'VERSION'
 
@@ -490,7 +504,7 @@ def collect(item, flag):
 
 if __name__ == '__main__':
 
-    a = ProjectCahce(mThread = 1, cacheDrive = 'Q:', project = '201707_AcerNitro5')
+    a = ProjectCahce(mThread = 1, cacheDrive = 'Q:', project = '201707_AcerNitro5', catchAll = True)
     print a.exists()
     print a.name()
     print a.path()
@@ -502,5 +516,5 @@ if __name__ == '__main__':
     col = collect(a, 'VERSION')
     for i,c in enumerate(col):
         if c.check() == False:
-            print c.path()    
+            print c.name(), c.getmtime(asc = True)
     
