@@ -13,9 +13,10 @@ reload(cc)
 
 class MainWidget(QWidget):
     def __init__(self, cacheDrive = 'Q:', parent = None, projRegex = '^\d{6}\w+'):
-        super(MainWidget, self).__init__(parent)
+        super(MainWidget, self).__init__(parent = parent)
         self.__cacheDrive = cacheDrive
         self.cutItem = None
+        self.__mainWindow = parent if parent != None else self
 
         self.initUI(projRegex = projRegex)
 
@@ -25,7 +26,7 @@ class MainWidget(QWidget):
         self.setWindowTitle('VFX Pipeline Tool')
         self.resize(860,720)
 
-        self.view_widget = ViewWidget(item = self.cutItem, parent = self)
+        self.view_widget = ViewWidget(item = self.cutItem, parent = self.__mainWindow)
         path_hlayout = QHBoxLayout()
         self.path_lineEdit = QLineEdit()
         self.path_lineEdit.setReadOnly(True)
@@ -56,11 +57,11 @@ class MainWidget(QWidget):
 
         self.pick_cut()
 
-        self.splitter = QSplitter()
+        self.splitter = QSplitter(parent = self)
         self.splitter.setOrientation(Qt.Vertical)
 
-        self.cache_comment_widget = CommentWidget(label = 'Cache')
-        self.ver_comment_widget = CommentWidget(label = 'Version')
+        self.cache_comment_widget = CommentWidget(label = 'Cache', parent = self)
+        self.ver_comment_widget = CommentWidget(label = 'Version', parent = self)
 
         label = QLabel('Project:')
         label.setFixedWidth(40)
@@ -145,8 +146,8 @@ class MainWidget(QWidget):
 
 class ViewWidget(QTableWidget):
     def __init__(self, item, parent = None):
-        super(ViewWidget, self).__init__(parent)
-        self.__parent = parent
+        super(ViewWidget, self).__init__(parent = parent)
+        self.mainWindow = parent
         self.cutItem = item
 
         self.initHead()
@@ -229,13 +230,13 @@ class ViewWidget(QTableWidget):
         version = self.getCacheItem(row).findVersion(cb.currentText())
         self.rowSetting(row, version)
         self.selectRow(row)
-        self.__parent.cache_comment_widget.listWidget.refresh(self.getCacheItem(row))
-        self.__parent.ver_comment_widget.listWidget.refresh(self.getVersionItem(row))
-        self.__parent.path_lineEdit_display(version)
+        self.mainWindow.cache_comment_widget.listWidget.refresh(self.getCacheItem(row))
+        self.mainWindow.ver_comment_widget.listWidget.refresh(self.getVersionItem(row))
+        self.mainWindow.path_lineEdit_display(version)
 
     def setScale(self, row):
         ver = self.getVersionItem(row)
-        dialog = ScaleDialog(ver)
+        dialog = ScaleDialog(ver, parent = self)
         dialog.show()
         if dialog.exec_():
             ver.setScale([float(dialog.xyz_lineEdit[0].text()), float(dialog.xyz_lineEdit[1].text()), float(dialog.xyz_lineEdit[2].text())])
@@ -299,6 +300,9 @@ class ViewWidget(QTableWidget):
     def rowSettingForMaya(self, row, version):
         pass
 
+    def getCutItem(self):
+        return self.cutItem
+
     def getCacheItems(self):
         return self.cacheItems
 
@@ -316,7 +320,7 @@ class ViewWidget(QTableWidget):
 
 class ScaleDialog(QDialog):
     def __init__(self, ver, parent = None):
-        super(ScaleDialog, self).__init__(parent)
+        super(ScaleDialog, self).__init__(parent = parent)
         self.__ver = ver
         self.initUI()
 
@@ -355,7 +359,7 @@ class ScaleDialog(QDialog):
 
 class CommentWidget(QWidget):
     def __init__(self, label, parent = None):
-        super(CommentWidget, self).__init__(parent)
+        super(CommentWidget, self).__init__(parent = parent)
         self.label = label
         self.initUI()
 
@@ -367,7 +371,7 @@ class CommentWidget(QWidget):
         read_hlayout = QHBoxLayout()
         main_layout.addWidget(QLabel(self.label + ' Comment:'))
 
-        self.listWidget = CommentListWidget()
+        self.listWidget = CommentListWidget(parent = self)
         self.lineEdit = QLineEdit()
 
         main_layout.addWidget(self.listWidget)
@@ -389,7 +393,7 @@ class CommentWidget(QWidget):
 
 class CommentListWidget(QListWidget):
     def __init__(self, item = None, parent = None):
-        super(CommentListWidget, self).__init__(parent)
+        super(CommentListWidget, self).__init__(parent = parent)
         self.__item = item
         self.setAlternatingRowColors(True)
         if self.__item != None:
@@ -406,7 +410,7 @@ class CommentListWidget(QListWidget):
         pointer = 0
         for comment in self.__item.msg().getComments():
             if comment != None:
-                self.addItem(comment[0])
+                self.addItem(comment[0] + u'  －  ' + comment[1])
                 widgetItem = self.item(pointer)
                 widgetItem.setToolTip(' / '.join([comment[1], comment[2]]))
                 pointer += 1

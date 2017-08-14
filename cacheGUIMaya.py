@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import cacheGUI, sys, Queue, re
+import cacheGUI, sys, Queue, re, itertools
 from maya import OpenMayaUI as omui
 try:
     from PySide2.QtCore import * 
@@ -13,12 +13,15 @@ except ImportError:
 import maya.cmds as cmds
 import maya.mel as mel
 
+reload(cacheGUI)
+
 def mainWiget_maya_init(self):
     project_path = cmds.workspace(q = True, rd = True)
     project = project_path.split('/')[1]
     index = self.projects_cb.findText(project, Qt.MatchFixedString)
     if index >= 0:
         self.projects_cb.setCurrentIndex(index)
+
 
 
 def maya_initHead(self):
@@ -42,9 +45,9 @@ def maya_initHead(self):
 def maya_rowSetting(self, row, version):
     if self.M_INMAYA_F in self.header:
         if findVFXnode() != None:
-            vfx = VFXnode(getVFXnode())
+            vfx = self.getSelectedNode()
             if vfx.findCache(version.parent()) != None:
-                vfx = VFXnode(getVFXnode())
+                vfx = self.getSelectedNode()
                 self.setItem(row, self.header.index(self.M_INMAYA_F), QTableWidgetItem(vfx.getWay(version.parent())))
             else:
                 self.setItem(row, self.header.index(self.M_INMAYA_F), QTableWidgetItem('X'))
@@ -57,7 +60,7 @@ def maya_rowSetting(self, row, version):
         import_bn.clicked.connect(self.import_mapper.map)
         self.import_mapper.setMapping(import_bn, row)
         if findVFXnode() != None:
-            vfx = VFXnode(getVFXnode())
+            vfx = self.getSelectedNode()
             if vfx.findCache(version.parent()) != None:
                 import_bn.setEnabled(False)
 
@@ -67,7 +70,7 @@ def maya_rowSetting(self, row, version):
         update_bn.clicked.connect(self.update_mapper.map)
         self.update_mapper.setMapping(update_bn, row)
         if findVFXnode() != None:
-            vfx = VFXnode(getVFXnode())
+            vfx = self.getSelectedNode()
             if vfx.findCache(version.parent()) == None:
                 update_bn.setEnabled(False)
             elif vfx.getVersion(version.parent()) == version.name():
@@ -82,7 +85,7 @@ def maya_rowSetting(self, row, version):
         select_bn.clicked.connect(self.select_mapper.map)
         self.select_mapper.setMapping(select_bn, row)
         if findVFXnode() != None:
-            vfx = VFXnode(getVFXnode())
+            vfx = self.getSelectedNode()
             if vfx.findCache(version.parent()) == None:
                 select_bn.setEnabled(False)
         else:
@@ -94,7 +97,7 @@ def maya_rowSetting(self, row, version):
         delete_bn.clicked.connect(self.delete_mapper.map)
         self.delete_mapper.setMapping(delete_bn, row)
         if findVFXnode() != None:
-            vfx = VFXnode(getVFXnode())
+            vfx = self.getSelectedNode()
             if vfx.findCache(version.parent()) == None:
                 delete_bn.setEnabled(False)
         else:
@@ -113,40 +116,50 @@ def disableSetScale(self, row):
 def import_cache(self, row):
     ver = self.getVersionItem(row)
     cache = self.getCacheItem(row)
+    if self.mainWindow.vfxNode_tree_widget.allCaches() != None:
+        check_caches = self.mainWindow.vfxNode_tree_widget.allCaches()
+        check_string = cache.parent().name() + '_' + cache.name().replace('\\','_')
+        if check_string in check_caches:
+            dialog = WarningDialog('Already Exists!!', parent = self)
+            dialog.show()
+            if dialog.exec_():
+                pass
+            return
     if cache.fileType() == 'vdb':
-        VFXnode(getVFXnode()).createVrayVolumeGrid(ver)
+        self.getSelectedNode().createVrayVolumeGrid(ver)
     elif cache.fileType() == 'abc':
         if ver.seqFlag() != 'SEQ':
-            dialog = AbcConfirm()
+            dialog = AbcConfirm(parent = self)
             dialog.show()
             if dialog.exec_():
                 if dialog.tag == 'maya':
-                    VFXnode(getVFXnode()).createMayaRef(ver)
+                    self.getSelectedNode().createMayaRef(ver)
                 elif dialog.tag == 'vray':
-                    VFXnode(getVFXnode()).createVrayProxyAbc(ver)
+                    self.getSelectedNode().createVrayProxyAbc(ver)
         else:
-            VFXnode(getVFXnode()).createVrayProxyAbc(ver)
+            self.getSelectedNode().createVrayProxyAbc(ver)
     elif cache.fileType() == 'ma':
-        VFXnode(getVFXnode()).createMayaRef(ver, refType = 'mayaAscii')
+        self.getSelectedNode().createMayaRef(ver, refType = 'mayaAscii')
     elif cache.fileType() == 'mb':
-        VFXnode(getVFXnode()).createMayaRef(ver, refType = 'mayaBinary')
+        self.getSelectedNode().createMayaRef(ver, refType = 'mayaBinary')
     elif cache.fileType() == 'prt':
-        dialog = WarningDialog('No Krakatoa!!')
+        dialog = WarningDialog('No Krakatoa!!', parent = self)
         dialog.show()
         if dialog.exec_():
             pass
+    self.mainWindow.vfxNode_tree_widget.initUI()
 
     self.rowSettingForMaya(row, self.getVersionItem(row))
 
 def select_cache(self, row):
-    vfx = VFXnode(getVFXnode())
+    vfx = self.getSelectedNode()
     xform_node = vfx.getXformNode(self.getCacheItem(row))
     cmds.select(xform_node, r = True)
 
 def update_cache(self, row):
     cache = self.getCacheItem(row)
     ver = self.getVersionItem(row)
-    vfx = VFXnode(getVFXnode())
+    vfx = self.getSelectedNode()
     if cache.fileType() == 'vdb':
         vfx.updateVrayVolumeGrid(ver)
     elif cache.fileType() == 'abc' and VFXnode(getVFXnode()).getWay(cache) == 'VrayProxy':
@@ -162,9 +175,9 @@ def update_cache(self, row):
 
 def delete_cache(self, row):
     cache = self.getCacheItem(row)
-    vfx = VFXnode(getVFXnode())
+    vfx = self.getSelectedNode()
     if cmds.referenceQuery(vfx.getShapeNode(cache), inr = True) == False:
-        dialog = DelConfirm(cache)
+        dialog = DelConfirm(cache, parent = self)
         dialog.show()
         if dialog.exec_():
             if cache.fileType() == 'vdb':
@@ -178,10 +191,15 @@ def delete_cache(self, row):
 
         self.rowSettingForMaya(row, self.getVersionItem(row))
     else:
-        dialog = WarningDialog('Can Not Delete Node in Reference File!!')
+        dialog = WarningDialog('Can Not Delete Node in Reference File!!', paren = self)
         dialog.show()
         if dialog.exec_():
             pass
+    self.mainWindow.vfxNode_tree_widget.initUI()
+
+def getSelectedNode(self):
+    vfx = VFXnode(getVFXnode()) if self.mainWindow.vfxNode_tree_widget.getSelectedVfxNode() == None else VFXnode(self.mainWindow.vfxNode_tree_widget.getSelectedVfxNode())
+    return vfx
 
 setattr(cacheGUI.MainWidget, 'maya_init', mainWiget_maya_init)
 
@@ -192,6 +210,7 @@ setattr(cacheGUI.ViewWidget, 'import_cache', import_cache)
 setattr(cacheGUI.ViewWidget, 'update_cache', update_cache)
 setattr(cacheGUI.ViewWidget, 'select_cache', select_cache)
 setattr(cacheGUI.ViewWidget, 'delete_cache', delete_cache)
+setattr(cacheGUI.ViewWidget, 'getSelectedNode', getSelectedNode)
 
 setattr(cacheGUI.ViewWidget, 'disableSetScale', disableSetScale)
 
@@ -222,7 +241,7 @@ class VFXnode(object):
                 self.updateVrayVolumeGrid(ver)
             self.lock()
         else:
-            dialog = WarningDialog('No Vray!!')
+            dialog = WarningDialog('No Vray!!', parent = self)
             dialog.show()
             if dialog.exec_():
                 pass
@@ -268,7 +287,7 @@ class VFXnode(object):
                 cmds.setAttr(vraymesh + '.useAlembicOffset', 1)
             self.lock()
         else:
-            dialog = WarningDialog('No Vray!!')
+            dialog = WarningDialog('No Vray!!', parent = self)
             dialog.show()
             if dialog.exec_():
                 pass
@@ -323,7 +342,7 @@ class VFXnode(object):
     def updateMayaRef(self, ver, initial = False, refType = 'Alembic'):
         self.unlock()
         if ver.seqFlag() == 'SEQ':
-            dialog = WarningDialog('Maya Ref Can Not Load Seq!!')
+            dialog = WarningDialog('Maya Ref Can Not Load Seq!!', parent = self)
             dialog.show()
             if dialog.exec_():
                 pass
@@ -454,8 +473,8 @@ class VFXnode(object):
         regex = re.compile('^vfx_')
         for attr in cmds.listAttr(self.__node):
             if regex.match(attr) and cmds.getAttr(self.__node + '.' + attr, type = True) == 'TdataCompound':
-                cuts.append(attr.split('_')[1])
-                caches.append('_'.join(attr.split('_')[2:]))
+                cuts.append([attr.split('_')[1]])
+                caches.append(['_'.join(attr.split('_')[2:])])
         return cuts, caches
 
     def findCache(self, cache):
@@ -491,11 +510,14 @@ class VFXnode(object):
     def unlock(self):
         cmds.lockNode(self.__node, lock = False)
 
+    def name(self):
+        return self.__node
+
 #########
 
 class WarningDialog(QDialog):
     def __init__(self, text, parent = None):
-        super(WarningDialog, self).__init__(parent)
+        super(WarningDialog, self).__init__(parent = parent)
         self.initUI(text)
     def initUI(self, text):
         main_layout = QVBoxLayout()
@@ -513,7 +535,7 @@ class WarningDialog(QDialog):
 
 class AbcConfirm(QDialog):
     def __init__(self, parent = None):
-        super(AbcConfirm, self).__init__(parent)
+        super(AbcConfirm, self).__init__(parent = parent)
         self.initUI()
 
     def initUI(self):
@@ -555,7 +577,7 @@ class AbcConfirm(QDialog):
 
 class DelConfirm(QDialog):
     def __init__(self, cache, parent = None):
-        super(DelConfirm, self).__init__(parent)
+        super(DelConfirm, self).__init__(parent = parent)
         self.initUI(cache)
 
     def initUI(self, cache):
@@ -641,9 +663,141 @@ def getVFXnode():
             return findVFXnode()[0] 
 
 
+class MayaMainWindow(QMainWindow):
+    def __init__(self, parent = None, cacheDrive = 'Q:'):
+        super(MayaMainWindow, self).__init__(parent = parent)
+        self.initUI(cacheDrive = cacheDrive)
+        self.__selectNode = None
+        self.__selectCut = None
+        
+
+    def initUI(self, cacheDrive = 'Q:'):
+        self.tab = QTabWidget(parent = self)
+
+        main_layout = QVBoxLayout()
+        
+        side_layout = QVBoxLayout()
+        side_layout.addWidget(QLabel('Current Status'))
+        self.side_widget = QWidget(parent = self)
+        self.side_widget.setLayout(side_layout)
+
+        self.vfxNode_tree_widget = VfxTreeWidget(parent = self)
+        side_layout.addWidget(self.vfxNode_tree_widget)   
+
+        self.main_widget = cacheGUI.MainWidget(cacheDrive = cacheDrive, parent = self)
+        splitter = QSplitter(Qt.Horizontal, parent = self)
+        splitter.addWidget(self.main_widget)
+        splitter.addWidget(self.side_widget)
+
+        main_layout.addWidget(splitter)
+        self.tab.addTab(splitter, 'VFX Cache')
+        self.setCentralWidget(self.tab)
+
+        self.resize(1200,720)
+
+    def selectCut(self, cut):
+        self.__selectCut = cut
+
+    def selectNode(self, node):
+        self.__selectNode = node
+
+    def getSelectedCut(self):
+        return self.__selectCut
+
+    def getSelectedNode(self):
+        return self.__selectNode
+
+class VfxTreeWidget(QTreeWidget):
+    def __init__(self, parent = None):
+        super(VfxTreeWidget, self).__init__(parent = parent)
+        self.initUI()
+        self.currentItemChanged.connect(self.selectedChanged)
+
+    def initUI(self):
+        self.clear()
+        self.setHeaderLabels(['CUT', 'Cache'])
+        self.setColumnCount(2)
+        if findVFXnode() != None:
+            for node in findVFXnode():
+                node_item = QTreeWidgetItem(self)
+                node_item.setText(0, node)
+                node_item.setToolTip(0, node)
+                cuts, caches = VFXnode(node).getVfxAttr()
+                for i in itertools.izip(cuts, caches):
+                    child = QTreeWidgetItem(node_item)
+                    child.setText(0, i[0][0])
+                    child.setText(1, i[1][0])
+                self.addTopLevelItem(node_item)
+
+        self.expandAll()
+        self.currentNode = None
+        
+
+    def getSelectedVfxNode(self):
+        if self.topLevelItemCount() == 0:
+            return None
+        item = self.currentItem()
+        if type(item) == type(None):
+            return None
+        top_item_index = self.indexOfTopLevelItem(item)
+        if top_item_index == -1:
+            parent_item = item.parent()
+            return parent_item.text(0)
+        else:
+            return self.topLevelItem(top_item_index).text(0)
+
+    def getSelectedCut(self):
+        item = self.currentItem()
+        if type(item) == type(None):
+            return None
+        top_item_index = self.indexOfTopLevelItem(item)
+        if top_item_index == -1:
+            return item.text(0)
+        else:
+            return None
+
+    def getSelectedCache(self):
+        item = self.currentItem()
+        top_item_index = self.indexOfTopLevelItem(item)
+        if top_item_index == -1:
+            return item.text(1)
+        else:
+            return None
+
+    def selectedChanged(self):
+        cut = self.getSelectedCut()
+        main_widget = self.parent().parent().parent().parent().parent().main_widget
+        if cut != None:
+            index = main_widget.cuts_cb.findText(cut, Qt.MatchFixedString)
+            if index >= 0:
+                main_widget.cuts_cb.setCurrentIndex(index)
+        new_node = self.getSelectedVfxNode()
+        if self.currentNode != new_node:
+            cutItem = main_widget.view_widget.getCutItem()
+            main_widget.view_widget.cutChange(cutItem)
+            self.currentNode = new_node
+
+    def allCaches(self):
+        caches = []
+        top_count = self.topLevelItemCount()
+        if top_count == 0:
+            return None
+        for i in range(top_count):
+            top_item = self.topLevelItem(i)
+            child_count = top_item.childCount()
+            if child_count > 0:
+                for j in range(child_count):
+                    item = top_item.child(j)
+                    caches.append(item.text(0) + '_' + item.text(1))
+        return caches
+
+
+
 def view(cacheDrive = 'Q:'):
     mayaMainWindowPtr = omui.MQtUtil.mainWindow()
     mayaMainWindow = wrapInstance(long(mayaMainWindowPtr), QMainWindow) 
-    mainWidget = cacheGUI.MainWidget(cacheDrive = cacheDrive)
+    mainWidget = MayaMainWindow(cacheDrive = cacheDrive, parent = mayaMainWindow)
     mainWidget.show()
+
+
 
