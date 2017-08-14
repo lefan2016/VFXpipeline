@@ -680,9 +680,11 @@ class MayaMainWindow(QMainWindow):
         side_layout.addWidget(QLabel('Current Status'))
         self.side_widget = QWidget(parent = self)
         self.side_widget.setLayout(side_layout)
+        self.createNode_bn = QPushButton('Create VFX Node')
 
         self.vfxNode_tree_widget = VfxTreeWidget(parent = self)
         side_layout.addWidget(self.vfxNode_tree_widget)   
+        side_layout.addWidget(self.createNode_bn)
 
         self.main_widget = cacheGUI.MainWidget(cacheDrive = cacheDrive, parent = self)
         splitter = QSplitter(Qt.Horizontal, parent = self)
@@ -695,6 +697,8 @@ class MayaMainWindow(QMainWindow):
 
         self.resize(1200,720)
 
+        self.createNode_bn.clicked.connect(self.createVfxNode)
+
     def selectCut(self, cut):
         self.__selectCut = cut
 
@@ -706,6 +710,11 @@ class MayaMainWindow(QMainWindow):
 
     def getSelectedNode(self):
         return self.__selectNode
+
+    def createVfxNode(self):
+        if findVFXnode() == None or 'VFX:VFXpipeline' not in findVFXnode():
+            createVFXnode()
+            self.vfxNode_tree_widget.initUI()
 
 class VfxTreeWidget(QTreeWidget):
     def __init__(self, parent = None):
