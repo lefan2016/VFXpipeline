@@ -22,6 +22,14 @@ def mainWiget_maya_init(self):
     if index >= 0:
         self.projects_cb.setCurrentIndex(index)
 
+def path_lineEdit_display(self, version):
+    if version.check() == False:
+        self.path_lineEdit.setText('Error')
+    elif version.checkSeq() == True:
+        self.path_lineEdit.setText((version.path() + '\\' + version.filename() + '.' + '#'*version.padding() + '.' + version.fileType()).replace('\\','/'))
+    elif version.checkSeq() == False:
+        self.path_lineEdit.setText((version.path() + '\\' + version.filename() + '.' + version.fileType()).replace('\\','/'))
+
 
 
 def maya_initHead(self):
@@ -202,6 +210,7 @@ def getSelectedNode(self):
     return vfx
 
 setattr(cacheGUI.MainWidget, 'maya_init', mainWiget_maya_init)
+setattr(cacheGUI.MainWidget, 'path_lineEdit_display', path_lineEdit_display)
 
 setattr(cacheGUI.ViewWidget, 'rowSettingForMaya', maya_rowSetting)
 setattr(cacheGUI.ViewWidget, 'initHeadForMaya', maya_initHead)

@@ -230,9 +230,9 @@ class ViewWidget(QTableWidget):
         version = self.getCacheItem(row).findVersion(cb.currentText())
         self.rowSetting(row, version)
         self.selectRow(row)
-        self.mainWindow.cache_comment_widget.listWidget.refresh(self.getCacheItem(row))
-        self.mainWindow.ver_comment_widget.listWidget.refresh(self.getVersionItem(row))
-        self.mainWindow.path_lineEdit_display(version)
+        self.parent().parent().cache_comment_widget.listWidget.refresh(self.getCacheItem(row))
+        self.parent().parent().ver_comment_widget.listWidget.refresh(self.getVersionItem(row))
+        self.parent().parent().path_lineEdit_display(version)
 
     def setScale(self, row):
         ver = self.getVersionItem(row)
@@ -377,7 +377,7 @@ class CommentWidget(QWidget):
         main_layout.addWidget(self.listWidget)
         send_hlayout.addWidget(self.lineEdit)
         send_hlayout.addWidget(self.comment_send_bn)
-        read_hlayout.addWidget(self.comment_read_bn)
+        #read_hlayout.addWidget(self.comment_read_bn)
          
         main_layout.addLayout(send_hlayout)
         main_layout.addLayout(read_hlayout)
