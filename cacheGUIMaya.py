@@ -199,7 +199,7 @@ def delete_cache(self, row):
 
         self.rowSettingForMaya(row, self.getVersionItem(row))
     else:
-        dialog = WarningDialog('Can Not Delete Node in Reference File!!', paren = self)
+        dialog = WarningDialog('Can Not Delete Node in Reference File!!', parent = self)
         dialog.show()
         if dialog.exec_():
             pass
